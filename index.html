@@ -218,6 +218,7 @@
     let viewOffset = { x: 0, y: 0 };
     let isDragging = false;
     let lastMousePos = { x: 0, y: 0 };
+    let politicalColors = [];
 
     // Noise generators
     const elevationNoise = new SimplexNoise(1);
@@ -227,6 +228,13 @@
 
     function recomputeScales() {
       WORLD_TO_VORONOI = VORONOI_SIZE / MAP_SCALE;
+    }
+
+    function precomputePoliticalColors() {
+      politicalColors = new Array(REGION_COUNT);
+      for (let i = 0; i < REGION_COUNT; i++) {
+        politicalColors[i] = hslToRgb(((i * 137.5) % 360) / 360, 0.5, 0.5);
+      }
     }
 
     // Helper functions
@@ -663,6 +671,7 @@
             if (viewMode === 'political' && terrain.region >= 0) {
               const hue = (terrain.region * 137.5) % 360;
               color = hslToRgb(hue / 360, 0.5, 0.5);
+              color = politicalColors[terrain.region];
             } else if (viewMode === 'elevation') {
               const gray = Math.floor(terrain.elevation * 255);
               color = [gray, gray, gray];
@@ -923,6 +932,7 @@
     // UI Controls
     function generateNewMap() {
       recomputeScales();
+      precomputePoliticalColors();
       currentMap = generateMap();
       drawOverview(document.getElementById('overviewCanvas'), currentMap);
       drawDetailView(document.getElementById('detailCanvas'), currentMap);
@@ -958,6 +968,7 @@
     function updateRegionCount() {
       REGION_COUNT = parseInt(document.getElementById('regionCount').value);
       document.getElementById('regionCountValue').textContent = REGION_COUNT;
+      precomputePoliticalColors();
       generateNewMap();
     }
 
