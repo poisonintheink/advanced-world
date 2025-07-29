@@ -210,6 +210,7 @@
     let REGION_COUNT = 7;
     let ZOOM_LEVEL = 4;
     let DETAIL_OCTAVES = 3;
+    let WORLD_TO_VORONOI = VORONOI_SIZE / MAP_SCALE;
 
     // State
     let currentMap = null;
@@ -223,6 +224,10 @@
     const moistureNoise = new SimplexNoise(2);
     const temperatureNoise = new SimplexNoise(3);
     const detailNoise = new SimplexNoise(4);
+
+    function recomputeScales() {
+      WORLD_TO_VORONOI = VORONOI_SIZE / MAP_SCALE;
+    }
 
     // Helper functions
     function triangleOfEdge(e) {
@@ -555,8 +560,8 @@
     // Sample map at world coordinates with detail
     function sampleDetailedTerrain(map, worldX, worldY) {
       // Convert world coordinates to Voronoi space
-      const vx = (worldX / MAP_SCALE) * VORONOI_SIZE;
-      const vy = (worldY / MAP_SCALE) * VORONOI_SIZE;
+      const vx = worldX * WORLD_TO_VORONOI;
+      const vy = worldY * WORLD_TO_VORONOI;
 
       // Use spatial grid to find nearby cells
       const gridX = Math.floor(vx / map.spatialCellSize);
@@ -917,6 +922,7 @@
 
     // UI Controls
     function generateNewMap() {
+      recomputeScales();
       currentMap = generateMap();
       drawOverview(document.getElementById('overviewCanvas'), currentMap);
       drawDetailView(document.getElementById('detailCanvas'), currentMap);
@@ -934,12 +940,14 @@
     function updateVoronoiSize() {
       VORONOI_SIZE = parseInt(document.getElementById('voronoiSize').value);
       document.getElementById('voronoiSizeValue').textContent = VORONOI_SIZE;
+      recomputeScales();
       generateNewMap();
     }
 
     function updateMapScale() {
       MAP_SCALE = parseInt(document.getElementById('mapScale').value);
       document.getElementById('mapScaleValue').textContent = MAP_SCALE + 'm';
+      recomputeScales();
       if (currentMap) {
         drawOverview(document.getElementById('overviewCanvas'), currentMap);
         drawDetailView(document.getElementById('detailCanvas'), currentMap);
