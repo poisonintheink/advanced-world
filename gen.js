@@ -1180,10 +1180,11 @@ async function exampleUsage() {
 // EXPORTS
 // =============================================================================
 
-// Make it work in both Node.js and browsers
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     WorldBuilder,
+
+    // Core components
     WorldGenerator,
     LayerGenerator,
     RasterTile,
@@ -1191,45 +1192,38 @@ if (typeof module !== 'undefined' && module.exports) {
     ChunkKey,
     SeededRandom,
     NoiseGenerator,
-    // ... rest of the exports
+
+    // Layer generators
+    ElevationLayer,
+    ImprovedElevationLayer,
+    SlopeLayer,
+    FlowDirectionLayer,
+    FlowAccumulationLayer,
+    WaterMaskLayer,
+    RiverNetworkLayer,
+    TemperatureLayer,
+    MoistureLayer,
+    BiomeLayer,
+    SettlementLayer,
+    RoadCostLayer,
+    RoadNetworkLayer,
+    VegetationLayer,
+    ResourceLayer,
+    POILayer,
+
+    // Dynamic systems
+    DynamicWorldManager,
+    WeatherSystem,
+    WildfireSystem,
+    SeasonalSystem,
+    ErosionSystem,
+
+    // Data types
+    BiomeProperties,
+    ResourceTypes,
+    POITypes,
+    SpawnTables
   };
-} else if (typeof window !== 'undefined') {
-  // Browser environment - make everything global
-  window.WorldBuilder = WorldBuilder;
-  window.WorldGenerator = WorldGenerator;
-  window.LayerGenerator = LayerGenerator;
-  window.RasterTile = RasterTile;
-  window.VectorTile = VectorTile;
-  window.ChunkKey = ChunkKey;
-  window.SeededRandom = SeededRandom;
-  window.NoiseGenerator = NoiseGenerator;
-  window.ChunkCache = ChunkCache;
-  window.ImprovedElevationLayer = ImprovedElevationLayer;
-  window.SlopeLayer = SlopeLayer;
-  window.FlowDirectionLayer = FlowDirectionLayer;
-  window.FlowAccumulationLayer = FlowAccumulationLayer;
-  window.WaterMaskLayer = WaterMaskLayer;
-  window.RiverNetworkLayer = RiverNetworkLayer;
-  window.TemperatureLayer = TemperatureLayer;
-  window.MoistureLayer = MoistureLayer;
-  window.BiomeLayer = BiomeLayer;
-  window.SettlementLayer = SettlementLayer;
-  window.SettlementSiteScorer = SettlementSiteScorer;
-  window.RoadCostLayer = RoadCostLayer;
-  window.RoadNetworkLayer = RoadNetworkLayer;
-  window.VegetationLayer = VegetationLayer;
-  window.ResourceLayer = ResourceLayer;
-  window.POILayer = POILayer;
-  window.DynamicWorldManager = DynamicWorldManager;
-  window.WeatherSystem = WeatherSystem;
-  window.WildfireSystem = WildfireSystem;
-  window.SeasonalSystem = SeasonalSystem;
-  window.ErosionSystem = ErosionSystem;
-  window.OverlayDelta = OverlayDelta;
-  window.BiomeProperties = BiomeProperties;
-  window.ResourceTypes = ResourceTypes;
-  window.POITypes = POITypes;
-  window.SpawnTables = SpawnTables;
 }
 
 // Run example if called directly
