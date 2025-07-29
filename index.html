@@ -4,922 +4,1004 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Procedural Island Generator</title>
+  <title>Large Scale Island Map Generator</title>
   <style>
     body {
       margin: 0;
       padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1a1a2e;
-      color: #eee;
+      font-family: Arial, sans-serif;
+      background-color: #1a1a1a;
+      color: #fff;
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
     }
 
-    h1 {
-      text-align: center;
-      color: #4fbdba;
-      margin-bottom: 30px;
-    }
-
-    .controls {
-      background: #0f3460;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
+    .canvas-container {
       display: flex;
       flex-wrap: wrap;
-      gap: 15px 20px;
-      align-items: center;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      justify-content: center;
-    }
-
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    label {
-      font-size: 14px;
-      color: #7ec8e3;
-    }
-
-    input[type="range"] {
-      width: 150px;
-    }
-
-    input[type="number"] {
-      width: 60px;
-      padding: 5px;
-      background: #16213e;
-      border: 1px solid #4fbdba;
-      color: #eee;
-      border-radius: 5px;
-    }
-
-    button {
-      background: #4fbdba;
-      color: #0f3460;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    button:hover {
-      background: #7ec8e3;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(79, 189, 186, 0.3);
-    }
-
-    button.active {
-      background: #7ec8e3;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+      gap: 20px;
+      margin-top: 20px;
     }
 
     canvas {
-      border: 3px solid #0f3460;
-      border-radius: 10px;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-      display: block;
-      margin: 0 auto;
-      background: #000;
+      border: 2px solid #333;
+      background-color: #000;
+      image-rendering: pixelated;
+      cursor: crosshair;
     }
 
-    .legend {
-      margin-top: 20px;
-      background: #0f3460;
+    .controls {
+      background-color: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #357abd;
+    }
+
+    .control-group {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #1a1a1a;
+      border-radius: 4px;
+    }
+
+    label {
+      display: inline-block;
+      width: 150px;
+    }
+
+    input[type="range"] {
+      width: 200px;
+      vertical-align: middle;
+    }
+
+    .value-display {
+      display: inline-block;
+      width: 60px;
+      text-align: right;
+      color: #4a90e2;
+    }
+
+    .info {
+      background-color: #2a2a2a;
       padding: 15px;
-      border-radius: 10px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .stat-item {
+      background-color: #1a1a1a;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    #coordinates {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: rgba(42, 42, 42, 0.9);
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    .view-controls {
       display: flex;
-      gap: 20px;
+      gap: 10px;
       flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .color-box {
-      width: 20px;
-      height: 20px;
-      border-radius: 3px;
-      border: 1px solid #333;
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h1>🏝️ Procedural Island Generator</h1>
+    <h1>Large Scale Island Map Generator (1m² Tiles)</h1>
 
     <div class="controls">
       <div class="control-group">
-        <label for="gridSize">Grid Size</label>
-        <input type="number" id="gridSize" value="100" min="50" max="200">
+        <h3>Map Generation</h3>
+        <button onclick="generateNewMap()">Generate New Map</button>
+        <button onclick="exportMapData()">Export Map Data</button>
+        <br>
+        <label>Voronoi Cells:</label>
+        <input type="range" id="voronoiSize" min="30" max="128" value="64" onchange="updateVoronoiSize()">
+        <span class="value-display" id="voronoiSizeValue">64</span>
+        <br>
+        <label>Map Scale (m):</label>
+        <input type="range" id="mapScale" min="512" max="8192" step="512" value="2048" onchange="updateMapScale()">
+        <span class="value-display" id="mapScaleValue">2048m</span>
+        <br>
+        <label>Region Count:</label>
+        <input type="range" id="regionCount" min="3" max="20" value="7" onchange="updateRegionCount()">
+        <span class="value-display" id="regionCountValue">7</span>
       </div>
 
       <div class="control-group">
-        <label for="cellSize">Cell Size</label>
-        <input type="number" id="cellSize" value="6" min="2" max="10">
+        <h3>View Controls</h3>
+        <div class="view-controls">
+          <button onclick="setViewMode('terrain')">Terrain View</button>
+          <button onclick="setViewMode('political')">Political View</button>
+          <button onclick="setViewMode('elevation')">Elevation View</button>
+          <button onclick="setViewMode('moisture')">Moisture View</button>
+          <button onclick="setViewMode('temperature')">Temperature View</button>
+        </div>
       </div>
 
       <div class="control-group">
-        <label for="noiseScale">Noise Scale</label>
-        <input type="range" id="noiseScale" min="0.5" max="5" step="0.1" value="2">
-        <span id="noiseScaleValue">2</span>
-      </div>
-
-      <div class="control-group">
-        <label for="octaves">Detail Level</label>
-        <input type="range" id="octaves" min="1" max="8" step="1" value="4">
-        <span id="octavesValue">4</span>
-      </div>
-
-      <div class="control-group">
-        <label for="falloffStrength">Island Shape</label>
-        <input type="range" id="falloffStrength" min="0.5" max="3" step="0.1" value="1.5">
-        <span id="falloffStrengthValue">1.5</span>
-      </div>
-
-      <div class="control-group">
-        <label for="shapeComplexity">Shape Complexity</label>
-        <input type="range" id="shapeComplexity" min="1" max="5" step="1" value="3">
-        <span id="shapeComplexityValue">3</span>
-      </div>
-
-      <div class="control-group">
-        <label for="coastlineDetail">Coastline Detail</label>
-        <input type="range" id="coastlineDetail" min="0.05" max="0.3" step="0.05" value="0.15">
-        <span id="coastlineDetailValue">0.15</span>
-      </div>
-
-      <div class="control-group">
-        <label for="regionDensity">Region Density</label>
-        <input type="range" id="regionDensity" min="20" max="100" step="10" value="50">
-        <span id="regionDensityValue">50</span>
-      </div>
-
-      <div class="control-group">
-        <label for="beachCoverage">Beach Coverage</label>
-        <input type="range" id="beachCoverage" min="0.2" max="1" step="0.1" value="0.7">
-        <span id="beachCoverageValue">0.7</span>
-      </div>
-
-      <div class="control-group">
-        <label for="minLandmass">Min Land %</label>
-        <input type="range" id="minLandmass" min="10" max="40" step="5" value="20">
-        <span id="minLandmassValue">20</span>
-      </div>
-
-      <button onclick="generateIsland()">Generate New Island</button>
-    </div>
-
-    <canvas id="islandCanvas"></canvas>
-
-    <div id="statusMessage" style="text-align: center; margin-top: 10px; color: #7ec8e3; min-height: 20px;"></div>
-
-    <div class="view-controls"
-      style="margin-top: 20px; text-align: center; gap: 10px; display: flex; justify-content: center;">
-      <button id="terrainBtn" class="active" onclick="setView('terrain')">Terrain View</button>
-      <button id="regionsBtn" onclick="setView('regions')">Regions View</button>
-      <button id="combinedBtn" onclick="setView('combined')">Combined View</button>
-    </div>
-
-    <div class="legend">
-      <div class="legend-item">
-        <div class="color-box" style="background: #001f3f;"></div>
-        <span>Deep Ocean</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #0074D9;"></div>
-        <span>Ocean</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #39CCCC;"></div>
-        <span>Shallow Water</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #F4D03F;"></div>
-        <span>Beach</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #5D6D7E;"></div>
-        <span>Rocky Coast</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #27AE60;"></div>
-        <span>Grassland</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #1E7F3C;"></div>
-        <span>Forest</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #8B7355;"></div>
-        <span>Hills</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #CCCCCC;"></div>
-        <span>Mountains</span>
+        <h3>Detail Level</h3>
+        <label>Zoom Level:</label>
+        <input type="range" id="zoomLevel" min="1" max="16" value="4" onchange="updateZoom()">
+        <span class="value-display" id="zoomValue">4x</span>
+        <br>
+        <label>Detail Octaves:</label>
+        <input type="range" id="detailOctaves" min="1" max="6" value="3" onchange="updateDetailLevel()">
+        <span class="value-display" id="detailValue">3</span>
       </div>
     </div>
 
-    <div class="info" style="margin-top: 20px; text-align: center; color: #7ec8e3; font-size: 14px;">
-      <p style="margin: 5px 0;">🏖️ Beach Coverage controls how much coastline has sandy beaches vs rocky cliffs</p>
-      <p style="margin: 5px 0;">🏝️ Min Land % ensures islands are always substantial enough for gameplay</p>
-      <p style="margin: 5px 0;">🗺️ Higher Shape Complexity creates archipelagos and irregular continents</p>
+    <div class="canvas-container">
+      <div>
+        <h3>Overview Map</h3>
+        <canvas id="overviewCanvas" width="512" height="512"></canvas>
+      </div>
+      <div>
+        <h3>Detail View (1m² per pixel)</h3>
+        <canvas id="detailCanvas" width="512" height="512"></canvas>
+      </div>
+    </div>
+
+    <div class="info">
+      <h3>Map Statistics</h3>
+      <div class="stats">
+        <div class="stat-item">
+          <strong>Total Area:</strong> <span id="totalArea">0</span> m²
+        </div>
+        <div class="stat-item">
+          <strong>Land Area:</strong> <span id="landArea">0</span> m²
+        </div>
+        <div class="stat-item">
+          <strong>Regions:</strong> <span id="regionStats">0</span>
+        </div>
+        <div class="stat-item">
+          <strong>Biomes:</strong> <span id="biomeStats">-</span>
+        </div>
+      </div>
     </div>
   </div>
 
+  <div id="coordinates">
+    <div>Tile: <span id="tileCoords">-</span></div>
+    <div>World: <span id="worldCoords">-</span> m</div>
+    <div>Biome: <span id="biomeInfo">-</span></div>
+    <div>Region: <span id="regionInfo">-</span></div>
+  </div>
+
+  <script src="https://unpkg.com/simplex-noise@2.4.0/simplex-noise.js"></script>
+  <script src="https://unpkg.com/delaunator@4.0.1/delaunator.min.js"></script>
   <script>
-    // Simple Perlin noise implementation
-    class PerlinNoise {
-      constructor(seed = Math.random()) {
-        this.seed = seed;
-        this.permutation = this.generatePermutation();
-      }
+    // Configuration
+    let VORONOI_SIZE = 64;  // Number of Voronoi cells
+    let MAP_SCALE = 2048;   // Map size in meters (tiles)
+    let REGION_COUNT = 7;
+    let ZOOM_LEVEL = 4;
+    let DETAIL_OCTAVES = 3;
 
-      generatePermutation() {
-        const p = [];
-        for (let i = 0; i < 256; i++) {
-          p[i] = i;
-        }
+    // State
+    let currentMap = null;
+    let viewMode = 'terrain';
+    let viewOffset = { x: 0, y: 0 };
+    let isDragging = false;
+    let lastMousePos = { x: 0, y: 0 };
 
-        // Shuffle using seed
-        let n = this.seed * 256;
-        for (let i = 255; i > 0; i--) {
-          n = (n + 31) * 17 % 256;
-          const j = Math.floor(n);
-          [p[i], p[j]] = [p[j], p[i]];
-        }
+    // Noise generators
+    const elevationNoise = new SimplexNoise(1);
+    const moistureNoise = new SimplexNoise(2);
+    const temperatureNoise = new SimplexNoise(3);
+    const detailNoise = new SimplexNoise(4);
 
-        // Duplicate for overflow
-        for (let i = 0; i < 256; i++) {
-          p[256 + i] = p[i];
-        }
-
-        return p;
-      }
-
-      fade(t) {
-        return t * t * t * (t * (t * 6 - 15) + 10);
-      }
-
-      lerp(a, b, t) {
-        return a + t * (b - a);
-      }
-
-      grad(hash, x, y) {
-        const h = hash & 3;
-        const u = h < 2 ? x : y;
-        const v = h < 2 ? y : x;
-        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-      }
-
-      noise(x, y) {
-        const X = Math.floor(x) & 255;
-        const Y = Math.floor(y) & 255;
-
-        x -= Math.floor(x);
-        y -= Math.floor(y);
-
-        const u = this.fade(x);
-        const v = this.fade(y);
-
-        const a = this.permutation[X] + Y;
-        const aa = this.permutation[a];
-        const ab = this.permutation[a + 1];
-        const b = this.permutation[X + 1] + Y;
-        const ba = this.permutation[b];
-        const bb = this.permutation[b + 1];
-
-        return this.lerp(
-          this.lerp(
-            this.grad(this.permutation[aa], x, y),
-            this.grad(this.permutation[ba], x - 1, y),
-            u
-          ),
-          this.lerp(
-            this.grad(this.permutation[ab], x, y - 1),
-            this.grad(this.permutation[bb], x - 1, y - 1),
-            u
-          ),
-          v
-        );
-      }
-
-      octaveNoise(x, y, octaves, persistence = 0.5) {
-        let total = 0;
-        let frequency = 1;
-        let amplitude = 1;
-        let maxValue = 0;
-
-        for (let i = 0; i < octaves; i++) {
-          total += this.noise(x * frequency, y * frequency) * amplitude;
-          maxValue += amplitude;
-          amplitude *= persistence;
-          frequency *= 2;
-        }
-
-        return total / maxValue;
-      }
+    // Helper functions
+    function triangleOfEdge(e) {
+      return Math.floor(e / 3);
     }
 
-    // Island generation
-    let noise = new PerlinNoise();
-    const canvas = document.getElementById('islandCanvas');
-    const ctx = canvas.getContext('2d');
-    let currentView = 'terrain';
-    let elevationMap = [];
-    let regionMap = [];
-    let gridSizeCache = 0;
-
-    // Terrain colors
-    const terrainColors = {
-      deepOcean: '#001f3f',
-      ocean: '#0074D9',
-      shallowWater: '#39CCCC',
-      beach: '#F4D03F',
-      rockyCoast: '#5D6D7E',
-      grass: '#27AE60',
-      forest: '#1E7F3C',
-      hills: '#8B7355',
-      mountain: '#CCCCCC',
-      snow: '#FFFFFF'
-    };
-
-    // Region colors - vibrant colors for different territories
-    const regionColors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-      '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8C471', '#82E0AA',
-      '#F7A6A4', '#B19CD9', '#FFB6C1', '#87CEEB', '#DDA0DD',
-      '#F0E68C', '#ADD8E6', '#FA8072', '#E6E6FA', '#FFE4B5'
-    ];
-
-    function getTerrainColor(elevation) {
-      if (elevation < 0.1) return terrainColors.deepOcean;
-      if (elevation < 0.2) return terrainColors.ocean;
-      if (elevation < 0.3) return terrainColors.shallowWater;
-      if (elevation < 0.35) return terrainColors.beach;
-      if (elevation < 0.37) return terrainColors.rockyCoast;
-      if (elevation < 0.5) return terrainColors.grass;
-      if (elevation < 0.65) return terrainColors.forest;
-      if (elevation < 0.8) return terrainColors.hills;
-      if (elevation < 0.9) return terrainColors.mountain;
-      return terrainColors.snow;
+    function nextHalfedge(e) {
+      return (e % 3 === 2) ? e - 2 : e + 1;
     }
 
-    function isLand(elevation) {
-      return elevation >= 0.31; // Include all beach areas and rocky coasts in regions
+    function prevHalfedge(e) {
+      return (e % 3 === 0) ? e + 2 : e - 1;
     }
 
-    function getNeighbors(x, y, gridSize) {
-      const neighbors = [];
-      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]];
+    function edgesAroundPoint(delaunay, start) {
+      const result = [];
+      let incoming = start;
+      do {
+        result.push(incoming);
+        const outgoing = nextHalfedge(incoming);
+        incoming = delaunay.halfedges[outgoing];
+      } while (incoming !== -1 && incoming !== start);
+      return result;
+    }
 
-      for (const [dx, dy] of dirs) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
-          neighbors.push([nx, ny]);
+    function pointsOfTriangle(delaunay, t) {
+      return [
+        delaunay.triangles[3 * t],
+        delaunay.triangles[3 * t + 1],
+        delaunay.triangles[3 * t + 2]
+      ];
+    }
+
+    function trianglesAdjacentToTriangle(delaunay, t) {
+      const adjacentTriangles = [];
+      for (let i = 0; i < 3; i++) {
+        const oppositeHalfedge = delaunay.halfedges[3 * t + i];
+        if (oppositeHalfedge >= 0) {
+          adjacentTriangles.push(triangleOfEdge(oppositeHalfedge));
         }
       }
-      return neighbors;
+      return adjacentTriangles;
     }
 
-    function generateRegions(elevationMap, gridSize) {
-      const regionMap = Array(gridSize).fill().map(() => Array(gridSize).fill(-1));
-      const landCells = [];
+    function buildSpatialIndex(map) {
+      const gridSize = 10; // 10x10 spatial grid
+      const cellSize = VORONOI_SIZE / gridSize;
+      const grid = new Array(gridSize * gridSize).fill(null).map(() => []);
 
-      // Find all land cells
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          if (isLand(elevationMap[y][x])) {
-            landCells.push([x, y]);
+      // Place each cell in the grid
+      for (let i = 0; i < map.numRegions - 8; i++) {
+        const x = Math.floor(map.points[i].x / cellSize);
+        const y = Math.floor(map.points[i].y / cellSize);
+        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+          grid[y * gridSize + x].push(i);
+        }
+      }
+
+      map.spatialGrid = grid;
+      map.spatialGridSize = gridSize;
+      map.spatialCellSize = cellSize;
+    }
+
+    // Generate Voronoi points
+    function generatePoints() {
+      const JITTER = 0.4;
+      let points = [];
+
+      for (let x = 0; x <= VORONOI_SIZE; x++) {
+        for (let y = 0; y <= VORONOI_SIZE; y++) {
+          points.push({
+            x: x + JITTER * (Math.random() - Math.random()),
+            y: y + JITTER * (Math.random() - Math.random()),
+            id: points.length
+          });
+        }
+      }
+
+      // Add boundary points
+      const boundary = VORONOI_SIZE * 0.2;
+      points.push({ x: -boundary, y: VORONOI_SIZE / 2, id: points.length });
+      points.push({ x: VORONOI_SIZE + boundary, y: VORONOI_SIZE / 2, id: points.length });
+      points.push({ x: VORONOI_SIZE / 2, y: -boundary, id: points.length });
+      points.push({ x: VORONOI_SIZE / 2, y: VORONOI_SIZE + boundary, id: points.length });
+      points.push({ x: -boundary, y: -boundary, id: points.length });
+      points.push({ x: VORONOI_SIZE + boundary, y: VORONOI_SIZE + boundary, id: points.length });
+      points.push({ x: VORONOI_SIZE + boundary, y: -boundary, id: points.length });
+      points.push({ x: -boundary, y: VORONOI_SIZE + boundary, id: points.length });
+
+      return points;
+    }
+
+    // Calculate centroids
+    function calculateCentroids(points, delaunay) {
+      const numTriangles = delaunay.halfedges.length / 3;
+      let centroids = [];
+      for (let t = 0; t < numTriangles; t++) {
+        let sumX = 0, sumY = 0;
+        for (let i = 0; i < 3; i++) {
+          let p = points[delaunay.triangles[3 * t + i]];
+          sumX += p.x;
+          sumY += p.y;
+        }
+        centroids[t] = { x: sumX / 3, y: sumY / 3 };
+      }
+      return centroids;
+    }
+
+    // Multi-octave noise sampling
+    function sampleNoise(noise, x, y, octaves, persistence = 0.5, scale = 1) {
+      let value = 0;
+      let amplitude = 1;
+      let frequency = scale;
+      let maxValue = 0;
+
+      for (let i = 0; i < octaves; i++) {
+        value += amplitude * (noise.noise2D(x * frequency, y * frequency) + 1) / 2;
+        maxValue += amplitude;
+        amplitude *= persistence;
+        frequency *= 2;
+      }
+
+      return value / maxValue;
+    }
+
+    // Assign elevation with island shaping
+    function assignElevation(map) {
+      let { points, numRegions } = map;
+      let elevation = [];
+
+      for (let r = 0; r < numRegions; r++) {
+        let nx = points[r].x / VORONOI_SIZE - 0.5;
+        let ny = points[r].y / VORONOI_SIZE - 0.5;
+
+        // Multi-octave noise
+        let e = sampleNoise(elevationNoise, nx, ny, 6, 0.5, 2);
+
+        // Island shaping
+        let d = Math.sqrt(nx * nx + ny * ny) * 2;
+        let islandMask = Math.max(0, 1 - Math.pow(d, 1.5));
+
+        elevation[r] = e * islandMask;
+      }
+
+      return elevation;
+    }
+
+    // Assign moisture
+    function assignMoisture(map) {
+      let { points, numRegions, elevation } = map;
+      let moisture = [];
+
+      for (let r = 0; r < numRegions; r++) {
+        let nx = points[r].x / VORONOI_SIZE - 0.5;
+        let ny = points[r].y / VORONOI_SIZE - 0.5;
+
+        // Base moisture from noise
+        let m = sampleNoise(moistureNoise, nx, ny, 4, 0.6, 3);
+
+        // Modify by elevation (higher = drier)
+        if (elevation[r] > 0.15) {
+          m *= Math.max(0.2, 1 - elevation[r] * 0.8);
+        }
+
+        moisture[r] = m;
+      }
+
+      return moisture;
+    }
+
+    // Assign temperature
+    function assignTemperature(map) {
+      let { points, numRegions, elevation } = map;
+      let temperature = [];
+
+      for (let r = 0; r < numRegions; r++) {
+        let ny = points[r].y / VORONOI_SIZE;
+
+        // Latitude-based temperature
+        let t = 1 - Math.abs(ny - 0.5) * 0.5;
+
+        // Elevation adjustment
+        if (elevation[r] > 0.15) {
+          t *= Math.max(0.3, 1 - elevation[r] * 0.7);
+        }
+
+        temperature[r] = t;
+      }
+
+      return temperature;
+    }
+
+    // Fixed region generation using proper flood-fill
+    function generateRegions(map) {
+      let { numRegions, elevation, triangles, halfedges } = map;
+      let regions = new Array(numRegions).fill(-1);
+      let landCells = [];
+
+      // Find all land cells (excluding boundary points)
+      const boundaryStart = numRegions - 8;
+      for (let i = 0; i < boundaryStart; i++) {
+        if (elevation[i] > 0.2) {
+          landCells.push(i);
+        }
+      }
+
+      if (landCells.length === 0) return regions;
+
+      // Create adjacency list for cells
+      const neighbors = new Array(numRegions).fill(null).map(() => new Set());
+
+      // Build neighbor relationships from triangulation
+      for (let e = 0; e < halfedges.length; e++) {
+        if (e < halfedges[e]) {
+          const t1 = triangleOfEdge(e);
+          const t2 = triangleOfEdge(halfedges[e]);
+
+          // Get the two cells that share this edge
+          const cell1 = triangles[nextHalfedge(e)];
+          const cell2 = triangles[nextHalfedge(halfedges[e])];
+
+          if (cell1 < boundaryStart && cell2 < boundaryStart) {
+            neighbors[cell1].add(cell2);
+            neighbors[cell2].add(cell1);
           }
         }
       }
 
-      if (landCells.length === 0) return regionMap;
+      // Place region seeds strategically
+      let regionSeeds = [];
+      let numSeeds = Math.min(REGION_COUNT, Math.floor(landCells.length / 20));
 
-      // Calculate number of regions based on land mass size
-      const regionDensity = parseInt(document.getElementById('regionDensity').value);
-      const numRegions = Math.max(3, Math.floor(landCells.length / regionDensity));
+      // Use a minimum distance between seeds
+      const minSeedDistance = VORONOI_SIZE / (numSeeds + 1);
 
-      // Place random seeds
-      const seeds = [];
-      const usedCells = new Set();
-
-      for (let i = 0; i < numRegions && i < landCells.length; i++) {
-        let seed;
+      for (let i = 0; i < numSeeds; i++) {
         let attempts = 0;
-        do {
-          seed = landCells[Math.floor(Math.random() * landCells.length)];
-          attempts++;
-        } while (usedCells.has(`${seed[0]},${seed[1]}`) && attempts < 100);
+        let seed = null;
 
-        if (attempts < 100) {
-          seeds.push({ x: seed[0], y: seed[1], region: i });
-          regionMap[seed[1]][seed[0]] = i;
-          usedCells.add(`${seed[0]},${seed[1]}`);
+        while (attempts < 100) {
+          seed = landCells[Math.floor(Math.random() * landCells.length)];
+
+          // Check distance to other seeds
+          let tooClose = false;
+          for (let other of regionSeeds) {
+            let dx = map.points[seed].x - map.points[other].x;
+            let dy = map.points[seed].y - map.points[other].y;
+            if (Math.sqrt(dx * dx + dy * dy) < minSeedDistance) {
+              tooClose = true;
+              break;
+            }
+          }
+
+          if (!tooClose) break;
+          attempts++;
+        }
+
+        if (seed !== null) {
+          regionSeeds.push(seed);
+          regions[seed] = i;
         }
       }
 
-      // Flood fill from seeds
-      const frontier = [...seeds];
+      // Flood-fill from seeds
+      let frontier = regionSeeds.map((seed, idx) => ({ cell: seed, region: idx }));
 
       while (frontier.length > 0) {
-        // Randomly pick a frontier cell
-        const index = Math.floor(Math.random() * frontier.length);
-        const current = frontier.splice(index, 1)[0];
+        // Random growth for more organic shapes
+        const idx = Math.floor(Math.random() * frontier.length);
+        const { cell, region } = frontier[idx];
+        frontier.splice(idx, 1);
 
-        // Check all neighbors
-        const neighbors = getNeighbors(current.x, current.y, gridSize);
-
-        for (const [nx, ny] of neighbors) {
-          // Only spread to unassigned land cells
-          if (isLand(elevationMap[ny][nx]) && regionMap[ny][nx] === -1) {
-            regionMap[ny][nx] = current.region;
-            frontier.push({ x: nx, y: ny, region: current.region });
+        // Grow to neighbors
+        for (let neighbor of neighbors[cell]) {
+          if (regions[neighbor] === -1 && elevation[neighbor] > 0.2) {
+            regions[neighbor] = region;
+            frontier.push({ cell: neighbor, region: region });
           }
         }
       }
 
-      return regionMap;
+      return regions;
     }
 
-    function generateIsland() {
-      const gridSize = parseInt(document.getElementById('gridSize').value);
-      const cellSize = parseInt(document.getElementById('cellSize').value);
-      const noiseScale = parseFloat(document.getElementById('noiseScale').value);
-      const octaves = parseInt(document.getElementById('octaves').value);
-      const falloffStrength = parseFloat(document.getElementById('falloffStrength').value);
-      const minLandPercent = parseInt(document.getElementById('minLandmass').value) / 100;
+    // Get biome based on elevation, moisture, and temperature
+    function getBiome(e, m, t) {
+      if (e < 0.15) return 'deepOcean';
+      if (e < 0.25) return 'ocean';
+      if (e < 0.3) return 'beach';
 
-      gridSizeCache = gridSize;
-
-      // Update canvas size
-      canvas.width = gridSize * cellSize;
-      canvas.height = gridSize * cellSize;
-
-      // Show generating status
-      document.getElementById('statusMessage').textContent = 'Generating island...';
-
-      let landCellCount = 0;
-      let attempts = 0;
-      const maxAttempts = 10;
-
-      // Keep generating until we have enough land
-      do {
-        // Generate new noise seed
-        noise = new PerlinNoise(Math.random());
-
-        // Update status if taking multiple attempts
-        if (attempts > 0) {
-          document.getElementById('statusMessage').textContent =
-            `Generating island... (Attempt ${attempts + 1}/${maxAttempts})`;
-        }
-
-        // Generate elevation map with more complex shapes
-        elevationMap = [];
-        landCellCount = 0;
-
-        // Create multiple blob centers for more varied shapes
-        const shapeComplexity = parseInt(document.getElementById('shapeComplexity').value);
-        const numBlobs = Math.min(shapeComplexity, 1 + Math.floor(Math.random() * shapeComplexity)); // 1 to shapeComplexity blobs
-        const blobs = [];
-        if (shapeComplexity === 1) {
-          // Single blob for simple island
-          blobs.push({
-            x: 0.5,
-            y: 0.5,
-            strength: 1,
-            size: 0.5 * (attempts > 3 ? 1.5 : 1) // Increase size if struggling
-          });
+      // Land biomes based on moisture and temperature
+      if (e < 0.6) {
+        if (t < 0.3) {
+          return m < 0.3 ? 'tundra' : 'snowyForest';
+        } else if (t < 0.6) {
+          if (m < 0.2) return 'desert';
+          if (m < 0.5) return 'grassland';
+          return 'forest';
         } else {
-          // Multiple blobs for complex shapes
-          const baseAngle = Math.random() * Math.PI * 2;
-          for (let i = 0; i < numBlobs; i++) {
-            let angle, distance;
-
-            if (shapeComplexity >= 4 && Math.random() < 0.3) {
-              // Create satellite islands for archipelagos
-              angle = Math.random() * Math.PI * 2;
-              distance = (0.4 + Math.random() * 0.3) * (attempts > 3 ? 0.8 : 1); // Bring closer if struggling
-            } else {
-              // Create connected landmasses
-              angle = baseAngle + (i / numBlobs) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
-              distance = (0.1 + Math.random() * 0.3) * (attempts > 3 ? 0.7 : 1); // Bring closer if struggling
-            }
-
-            blobs.push({
-              x: 0.5 + Math.cos(angle) * distance,
-              y: 0.5 + Math.sin(angle) * distance,
-              strength: 0.5 + Math.random() * 0.5 + (attempts > 3 ? 0.2 : 0), // Boost strength if struggling
-              size: (0.25 + Math.random() * 0.35) * (attempts > 3 ? 1.3 : 1) // Increase size if struggling
-            });
-          }
+          if (m < 0.2) return 'desert';
+          if (m < 0.4) return 'savanna';
+          if (m < 0.7) return 'rainforest';
+          return 'swamp';
         }
+      } else if (e < 0.8) {
+        return t < 0.3 ? 'snowyMountain' : 'mountain';
+      } else {
+        return 'peak';
+      }
+    }
 
-        for (let y = 0; y < gridSize; y++) {
-          elevationMap[y] = [];
-          for (let x = 0; x < gridSize; x++) {
-            // Get noise value with domain warping for more irregular shapes
-            const warpX = x / gridSize;
-            const warpY = y / gridSize;
+    // Enhanced biome colors
+    const biomeColors = {
+      deepOcean: [10, 30, 60],
+      ocean: [20, 50, 90],
+      beach: [230, 210, 170],
+      desert: [230, 200, 150],
+      grassland: [120, 180, 80],
+      forest: [50, 120, 60],
+      rainforest: [30, 90, 50],
+      savanna: [180, 160, 100],
+      swamp: [60, 80, 60],
+      tundra: [200, 200, 180],
+      snowyForest: [180, 200, 180],
+      mountain: [140, 130, 120],
+      snowyMountain: [220, 220, 230],
+      peak: [250, 250, 255]
+    };
 
-            // Add warping to create more irregular coastlines
-            const coastlineDetail = parseFloat(document.getElementById('coastlineDetail').value);
-            const warpNoiseX = noise.noise(warpX * 8, warpY * 8) * coastlineDetail;
-            const warpNoiseY = noise.noise(warpX * 8 + 100, warpY * 8 + 100) * coastlineDetail;
+    // Sample map at world coordinates with detail
+    function sampleDetailedTerrain(map, worldX, worldY) {
+      // Convert world coordinates to Voronoi space
+      const vx = (worldX / MAP_SCALE) * VORONOI_SIZE;
+      const vy = (worldY / MAP_SCALE) * VORONOI_SIZE;
 
-            const nx = (warpX + warpNoiseX) * noiseScale;
-            const ny = (warpY + warpNoiseY) * noiseScale;
-            let elevation = noise.octaveNoise(nx, ny, octaves);
+      // Use spatial grid to find nearby cells
+      const gridX = Math.floor(vx / map.spatialCellSize);
+      const gridY = Math.floor(vy / map.spatialCellSize);
 
-            // Normalize to 0-1
-            elevation = (elevation + 1) / 2;
+      let nearest = [];
 
-            // Apply multi-blob falloff for varied island shapes
-            let falloff = 0;
-            for (const blob of blobs) {
-              const dx = x / gridSize - blob.x;
-              const dy = y / gridSize - blob.y;
+      // Check current grid cell and neighbors
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const gx = gridX + dx;
+          const gy = gridY + dy;
+
+          if (gx >= 0 && gx < map.spatialGridSize && gy >= 0 && gy < map.spatialGridSize) {
+            const cellsInGrid = map.spatialGrid[gy * map.spatialGridSize + gx];
+
+            for (let cellId of cellsInGrid) {
+              const dx = map.points[cellId].x - vx;
+              const dy = map.points[cellId].y - vy;
               const dist = Math.sqrt(dx * dx + dy * dy);
-              const blobFalloff = Math.max(0, 1 - Math.pow(dist / blob.size, falloffStrength)) * blob.strength;
-              falloff = Math.max(falloff, blobFalloff);
-            }
-
-            elevation *= falloff;
-
-            // Boost elevation slightly if we're having trouble generating land
-            if (attempts > 3) {
-              elevation = Math.pow(elevation, 0.7); // More aggressive boost
-            } else if (attempts > 1) {
-              elevation = Math.pow(elevation, 0.85);
-            }
-
-            elevationMap[y][x] = Math.max(0, Math.min(1, elevation));
-
-            // Count land cells
-            if (elevationMap[y][x] >= 0.37) {
-              landCellCount++;
+              nearest.push({ cell: cellId, dist: dist });
             }
           }
         }
+      }
 
-        attempts++;
-      } while (landCellCount < gridSize * gridSize * minLandPercent && attempts < maxAttempts);
+      // If no cells found (edge case), fall back to nearest
+      if (nearest.length === 0) {
+        const nearestCell = Math.floor(vx) + Math.floor(vy) * VORONOI_SIZE;
+        const cellId = Math.min(map.numRegions - 9, Math.max(0, nearestCell));
+        nearest.push({ cell: cellId, dist: 0 });
+      }
 
-      // Update status with final land percentage
-      const landPercent = Math.round((landCellCount / (gridSize * gridSize)) * 100);
-      document.getElementById('statusMessage').textContent =
-        `Generated island with ${landPercent}% land coverage` +
-        (attempts > 1 ? ` (${attempts} attempts)` : '');
+      nearest.sort((a, b) => a.dist - b.dist);
+      nearest = nearest.slice(0, 4); // Only keep 4 nearest
 
-      // Clear status message after delay
-      setTimeout(() => {
-        document.getElementById('statusMessage').textContent = '';
-      }, 3000);
+      // Rest of the function remains the same...
+      const weights = [];
+      let totalWeight = 0;
+      for (let i = 0; i < nearest.length; i++) {
+        const w = 1 / (nearest[i].dist + 0.01);
+        weights.push(w);
+        totalWeight += w;
+      }
 
-      // Generate beaches with variable coverage
-      generateBeaches(elevationMap, gridSize);
+      let elevation = 0, moisture = 0, temperature = 0, region = -1;
+      for (let i = 0; i < weights.length; i++) {
+        const cell = nearest[i].cell;
+        const w = weights[i] / totalWeight;
+        elevation += map.elevation[cell] * w;
+        moisture += map.moisture[cell] * w;
+        temperature += map.temperature[cell] * w;
+      }
 
-      // Generate regions
-      regionMap = generateRegions(elevationMap, gridSize);
+      if (nearest[0].dist < 1) {
+        region = map.regions[nearest[0].cell];
+      }
 
-      // Render the island
-      renderIsland();
+      // Add detail noise at tile scale
+      const detailScale = 0.005;
+      const detail = sampleNoise(detailNoise, worldX * detailScale, worldY * detailScale, DETAIL_OCTAVES, 0.6, 1);
+
+      elevation = Math.max(0, Math.min(1, elevation + (detail - 0.5) * 0.1));
+      moisture = Math.max(0, Math.min(1, moisture + (detail - 0.5) * 0.2));
+
+      return {
+        elevation,
+        moisture,
+        temperature,
+        region,
+        biome: getBiome(elevation, moisture, temperature)
+      };
     }
 
-    function generateBeaches(elevationMap, gridSize) {
-      const beachCoverage = parseFloat(document.getElementById('beachCoverage').value);
-      const beachNoise = new PerlinNoise(Math.random());
-      const processedElevation = JSON.parse(JSON.stringify(elevationMap)); // Deep copy
-
-      // First, identify all coastline cells (land cells adjacent to water)
-      const coastlineCells = [];
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          if (elevationMap[y][x] >= 0.37) { // This is land
-            let adjacentToWater = false;
-
-            // Check all 8 neighbors
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                if (dy === 0 && dx === 0) continue;
-                const ny = y + dy;
-                const nx = x + dx;
-                if (ny >= 0 && ny < gridSize && nx >= 0 && nx < gridSize) {
-                  if (elevationMap[ny][nx] < 0.3) { // Adjacent to water
-                    adjacentToWater = true;
-                    break;
-                  }
-                }
-              }
-              if (adjacentToWater) break;
-            }
-
-            if (adjacentToWater) {
-              coastlineCells.push({ x, y });
-            }
-          }
-        }
-      }
-
-      // Determine which coastline sections should have beaches using noise
-      const beachSections = new Set();
-      for (const cell of coastlineCells) {
-        // Use larger scale noise for continuous beach sections
-        const beachProbability = (beachNoise.noise(cell.x * 0.02, cell.y * 0.02) + 1) / 2;
-        if (beachProbability < beachCoverage) {
-          beachSections.add(`${cell.x},${cell.y}`);
-        }
-      }
-
-      // Expand beach sections to nearby coastline cells for continuity
-      const expandedBeachSections = new Set(beachSections);
-      for (const cell of coastlineCells) {
-        const key = `${cell.x},${cell.y}`;
-        if (!beachSections.has(key)) {
-          // Count nearby beach sections
-          let nearbyBeaches = 0;
-          for (let dy = -2; dy <= 2; dy++) {
-            for (let dx = -2; dx <= 2; dx++) {
-              if (beachSections.has(`${cell.x + dx},${cell.y + dy}`)) {
-                nearbyBeaches++;
-              }
-            }
-          }
-          // Add to beach if surrounded by beach sections
-          if (nearbyBeaches >= 3) {
-            expandedBeachSections.add(key);
-          }
-        }
-      }
-
-      // Now create the actual beaches
-      // First pass: Mark coastline cells
-      for (const cell of coastlineCells) {
-        const key = `${cell.x},${cell.y}`;
-        if (expandedBeachSections.has(key)) {
-          // This will be a beach - mark it temporarily
-          processedElevation[cell.y][cell.x] = 0.34; // Temporary beach marker
-        } else {
-          // This will be rocky coast
-          processedElevation[cell.y][cell.x] = 0.36;
-        }
-      }
-
-      // Second pass: Create beach buffer in water
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          if (elevationMap[y][x] < 0.3) { // This is water
-            let minDistToBeachCoast = Infinity;
-            let hasBeachCoastNearby = false;
-
-            // Check distance to beach-marked coastline
-            for (let dy = -3; dy <= 3; dy++) {
-              for (let dx = -3; dx <= 3; dx++) {
-                const ny = y + dy;
-                const nx = x + dx;
-                if (ny >= 0 && ny < gridSize && nx >= 0 && nx < gridSize) {
-                  if (processedElevation[ny][nx] === 0.34) { // Beach-marked coast
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < minDistToBeachCoast) {
-                      minDistToBeachCoast = dist;
-                      hasBeachCoastNearby = true;
-                    }
-                  }
-                }
-              }
-            }
-
-            // Create beach in water near beach-marked coastline
-            if (hasBeachCoastNearby) {
-              const beachWidthNoise = (beachNoise.noise(x * 0.03 + 100, y * 0.03 + 100) + 1) / 2;
-              const localBeachWidth = 1 + beachWidthNoise * 1.5;
-
-              if (minDistToBeachCoast <= localBeachWidth) {
-                processedElevation[y][x] = 0.32; // Beach
-              } else if (minDistToBeachCoast <= localBeachWidth + 1 && elevationMap[y][x] > 0.2) {
-                processedElevation[y][x] = 0.25; // Shallow water
-              }
-            }
-          }
-        }
-      }
-
-      // Third pass: Fix the temporary beach markers on coastline
-      for (const cell of coastlineCells) {
-        if (processedElevation[cell.y][cell.x] === 0.34) {
-          processedElevation[cell.y][cell.x] = 0.32; // Convert to actual beach
-        }
-      }
-
-      // Fourth pass: Ensure no gaps between beach and land
-      const finalElevation = JSON.parse(JSON.stringify(processedElevation));
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const current = processedElevation[y][x];
-
-          // If this is shallow water or low elevation
-          if (current >= 0.2 && current < 0.3) {
-            let hasBeachNeighbor = false;
-            let hasLandNeighbor = false;
-
-            // Check neighbors
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                if (dy === 0 && dx === 0) continue;
-                const ny = y + dy;
-                const nx = x + dx;
-                if (ny >= 0 && ny < gridSize && nx >= 0 && nx < gridSize) {
-                  const neighbor = processedElevation[ny][nx];
-                  if (neighbor >= 0.31 && neighbor < 0.35) hasBeachNeighbor = true;
-                  if (neighbor >= 0.37) hasLandNeighbor = true;
-                }
-              }
-            }
-
-            // Fill gap between beach and land
-            if (hasBeachNeighbor && hasLandNeighbor) {
-              finalElevation[y][x] = 0.32;
-            }
-          }
-        }
-      }
-
-      // Update the original elevation map
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          elevationMap[y][x] = finalElevation[y][x];
-        }
-      }
-    }
-
-    function renderIsland() {
-      const gridSize = gridSizeCache;
-      const cellSize = parseInt(document.getElementById('cellSize').value);
+    // Draw overview map
+    function drawOverview(canvas, map) {
+      const ctx = canvas.getContext('2d');
+      const scale = canvas.width / VORONOI_SIZE;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Render based on current view
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const elevation = elevationMap[y][x];
-          const region = regionMap[y][x];
+      // Draw in chunks to prevent blocking
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
 
-          if (currentView === 'terrain') {
-            ctx.fillStyle = getTerrainColor(elevation);
-          } else if (currentView === 'regions') {
-            if (region === -1) {
-              ctx.fillStyle = getTerrainColor(elevation);
+      let y = 0;
+
+      function drawChunk() {
+        const chunkHeight = 32; // Process 32 rows at a time
+        const endY = Math.min(y + chunkHeight, canvas.height);
+
+        for (; y < endY; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const worldX = (x / canvas.width) * MAP_SCALE;
+            const worldY = (y / canvas.height) * MAP_SCALE;
+            const terrain = sampleDetailedTerrain(map, worldX, worldY);
+
+            let color;
+            if (viewMode === 'political' && terrain.region >= 0) {
+              const hue = (terrain.region * 137.5) % 360;
+              color = hslToRgb(hue / 360, 0.5, 0.5);
+            } else if (viewMode === 'elevation') {
+              const gray = Math.floor(terrain.elevation * 255);
+              color = [gray, gray, gray];
+            } else if (viewMode === 'moisture') {
+              const blue = Math.floor(terrain.moisture * 255);
+              color = [0, blue / 2, blue];
+            } else if (viewMode === 'temperature') {
+              const temp = Math.floor(terrain.temperature * 255);
+              color = [temp, temp / 2, 255 - temp];
             } else {
-              ctx.fillStyle = regionColors[region % regionColors.length];
+              color = biomeColors[terrain.biome] || [100, 100, 100];
             }
-          } else if (currentView === 'combined') {
-            if (region === -1) {
-              ctx.fillStyle = getTerrainColor(elevation);
-            } else {
-              // Blend terrain and region colors
-              const terrainColor = getTerrainColor(elevation);
-              const regionColor = regionColors[region % regionColors.length];
-              ctx.fillStyle = blendColors(terrainColor, regionColor, 0.6);
-            }
+
+            const idx = (y * canvas.width + x) * 4;
+            data[idx] = color[0];
+            data[idx + 1] = color[1];
+            data[idx + 2] = color[2];
+            data[idx + 3] = 255;
           }
-
-          ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
         }
-      }
 
-      // Add region borders in regions and combined view
-      if (currentView === 'regions' || currentView === 'combined') {
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.lineWidth = 2;
+        ctx.putImageData(imageData, 0, 0);
 
-        for (let y = 0; y < gridSize; y++) {
-          for (let x = 0; x < gridSize; x++) {
-            const currentRegion = regionMap[y][x];
-            if (currentRegion === -1) continue;
-
-            // Check right neighbor
-            if (x < gridSize - 1 && regionMap[y][x + 1] !== currentRegion) {
-              ctx.beginPath();
-              ctx.moveTo((x + 1) * cellSize, y * cellSize);
-              ctx.lineTo((x + 1) * cellSize, (y + 1) * cellSize);
-              ctx.stroke();
-            }
-
-            // Check bottom neighbor
-            if (y < gridSize - 1 && regionMap[y + 1][x] !== currentRegion) {
-              ctx.beginPath();
-              ctx.moveTo(x * cellSize, (y + 1) * cellSize);
-              ctx.lineTo((x + 1) * cellSize, (y + 1) * cellSize);
-              ctx.stroke();
-            }
+        if (y < canvas.height) {
+          requestAnimationFrame(drawChunk);
+        } else {
+          // Draw borders after main rendering
+          if (viewMode === 'political') {
+            drawPoliticalBorders(ctx, canvas, map);
           }
         }
       }
 
-      // Add subtle grid lines
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i <= gridSize; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * cellSize, 0);
-        ctx.lineTo(i * cellSize, canvas.height);
-        ctx.stroke();
+      drawChunk();
+    }
 
-        ctx.beginPath();
-        ctx.moveTo(0, i * cellSize);
-        ctx.lineTo(canvas.width, i * cellSize);
-        ctx.stroke();
+    // Add this function after drawOverview function:
+
+    function drawPoliticalBorders(ctx, canvas, map) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 2;
+
+      // Simple edge detection for region borders
+      for (let y = 1; y < canvas.height - 1; y++) {
+        for (let x = 1; x < canvas.width - 1; x++) {
+          const worldX = (x / canvas.width) * MAP_SCALE;
+          const worldY = (y / canvas.height) * MAP_SCALE;
+          const center = sampleDetailedTerrain(map, worldX, worldY);
+
+          if (center.region >= 0) {
+            const neighbors = [
+              sampleDetailedTerrain(map, worldX + MAP_SCALE / canvas.width, worldY),
+              sampleDetailedTerrain(map, worldX, worldY + MAP_SCALE / canvas.height)
+            ];
+
+            for (let n of neighbors) {
+              if (n.region !== center.region && n.region >= 0) {
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(x, y, 1, 1);
+                break;
+              }
+            }
+          }
+        }
       }
     }
 
-    function blendColors(color1, color2, ratio) {
-      const c1 = hexToRgb(color1);
-      const c2 = hexToRgb(color2);
+    // Draw detailed view (1m per pixel)
+    function drawDetailView(canvas, map) {
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
 
-      const r = Math.round(c1.r * (1 - ratio) + c2.r * ratio);
-      const g = Math.round(c1.g * (1 - ratio) + c2.g * ratio);
-      const b = Math.round(c1.b * (1 - ratio) + c2.b * ratio);
+      // Center view on map center initially
+      const centerX = MAP_SCALE / 2;
+      const centerY = MAP_SCALE / 2;
+      const halfWidth = canvas.width / (2 * ZOOM_LEVEL);
+      const halfHeight = canvas.height / (2 * ZOOM_LEVEL);
 
-      return `rgb(${r}, ${g}, ${b})`;
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          // Convert canvas coordinates to world coordinates
+          const worldX = centerX - halfWidth + (x / ZOOM_LEVEL) + viewOffset.x;
+          const worldY = centerY - halfHeight + (y / ZOOM_LEVEL) + viewOffset.y;
+
+          if (worldX < 0 || worldX >= MAP_SCALE || worldY < 0 || worldY >= MAP_SCALE) {
+            // Outside map bounds
+            data[(y * canvas.width + x) * 4] = 20;
+            data[(y * canvas.width + x) * 4 + 1] = 20;
+            data[(y * canvas.width + x) * 4 + 2] = 20;
+            data[(y * canvas.width + x) * 4 + 3] = 255;
+            continue;
+          }
+
+          const terrain = sampleDetailedTerrain(map, worldX, worldY);
+          let color = biomeColors[terrain.biome] || [100, 100, 100];
+
+          // Add variation based on detail noise
+          const variation = ((worldX * 73 + worldY * 179) % 20 - 10) / 255;
+          color = [
+            Math.max(0, Math.min(255, color[0] + variation * 30)),
+            Math.max(0, Math.min(255, color[1] + variation * 30)),
+            Math.max(0, Math.min(255, color[2] + variation * 30))
+          ];
+
+          const idx = (y * canvas.width + x) * 4;
+          data[idx] = color[0];
+          data[idx + 1] = color[1];
+          data[idx + 2] = color[2];
+          data[idx + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
     }
 
-    function hexToRgb(hex) {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-      } : null;
+    // Calculate map statistics
+    function calculateStats(map) {
+      let landCount = 0;
+      let biomeCounts = {};
+      let regionSizes = new Array(REGION_COUNT).fill(0);
+
+      // Reduce sample rate for large maps
+      const sampleInterval = Math.max(10, MAP_SCALE / 100);
+      const samples = Math.floor(MAP_SCALE / sampleInterval);
+
+      for (let y = 0; y < samples; y++) {
+        for (let x = 0; x < samples; x++) {
+          const terrain = sampleDetailedTerrain(map, x * sampleInterval, y * sampleInterval);
+
+          if (terrain.elevation > 0.25) {
+            landCount++;
+            biomeCounts[terrain.biome] = (biomeCounts[terrain.biome] || 0) + 1;
+            if (terrain.region >= 0) {
+              regionSizes[terrain.region]++;
+            }
+          }
+        }
+      }
+
+      const totalArea = MAP_SCALE * MAP_SCALE;
+      const landArea = (landCount / (samples * samples)) * totalArea;
+
+      document.getElementById('totalArea').textContent = totalArea.toLocaleString();
+      document.getElementById('landArea').textContent = Math.round(landArea).toLocaleString();
+      document.getElementById('regionStats').textContent = regionSizes.filter(s => s > 0).length;
+
+      const biomeList = Object.keys(biomeCounts)
+        .filter(b => !b.includes('ocean') && b !== 'beach')
+        .join(', ');
+      document.getElementById('biomeStats').textContent = biomeList || 'None';
     }
 
-    function setView(view) {
-      currentView = view;
+    // Mouse interaction
+    function setupMouseInteraction() {
+      const detailCanvas = document.getElementById('detailCanvas');
 
-      // Update button states
-      document.querySelectorAll('.view-controls button').forEach(btn => {
-        btn.classList.remove('active');
+      detailCanvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMousePos = { x: e.clientX, y: e.clientY };
       });
 
-      if (view === 'terrain') document.getElementById('terrainBtn').classList.add('active');
-      else if (view === 'regions') document.getElementById('regionsBtn').classList.add('active');
-      else if (view === 'combined') document.getElementById('combinedBtn').classList.add('active');
+      detailCanvas.addEventListener('mousemove', (e) => {
+        const rect = detailCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-      renderIsland();
+        // Update coordinates display
+        const centerX = MAP_SCALE / 2;
+        const centerY = MAP_SCALE / 2;
+        const halfWidth = detailCanvas.width / (2 * ZOOM_LEVEL);
+        const halfHeight = detailCanvas.height / (2 * ZOOM_LEVEL);
+
+        const worldX = Math.floor(centerX - halfWidth + (x / ZOOM_LEVEL) + viewOffset.x);
+        const worldY = Math.floor(centerY - halfHeight + (y / ZOOM_LEVEL) + viewOffset.y);
+
+        if (worldX >= 0 && worldX < MAP_SCALE && worldY >= 0 && worldY < MAP_SCALE) {
+          document.getElementById('tileCoords').textContent = `${x}, ${y}`;
+          document.getElementById('worldCoords').textContent = `${worldX}, ${worldY}`;
+
+          if (currentMap) {
+            const terrain = sampleDetailedTerrain(currentMap, worldX, worldY);
+            document.getElementById('biomeInfo').textContent = terrain.biome;
+            document.getElementById('regionInfo').textContent =
+              terrain.region >= 0 ? `Nation ${terrain.region + 1}` : 'None';
+          }
+        }
+
+        // Handle dragging
+        if (isDragging) {
+          viewOffset.x -= (e.clientX - lastMousePos.x) / ZOOM_LEVEL;
+          viewOffset.y -= (e.clientY - lastMousePos.y) / ZOOM_LEVEL;
+          lastMousePos = { x: e.clientX, y: e.clientY };
+
+          if (currentMap) {
+            drawDetailView(detailCanvas, currentMap);
+          }
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
     }
 
-    // Update value displays
-    document.getElementById('noiseScale').addEventListener('input', (e) => {
-      document.getElementById('noiseScaleValue').textContent = e.target.value;
-    });
+    // Helper function for HSL to RGB conversion
+    function hslToRgb(h, s, l) {
+      let r, g, b;
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1 / 6) return p + (q - p) * 6 * t;
+          if (t < 1 / 2) return q;
+          if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+          return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
 
-    document.getElementById('octaves').addEventListener('input', (e) => {
-      document.getElementById('octavesValue').textContent = e.target.value;
-    });
+    // Generate map
+    function generateMap() {
+      // Generate base structure
+      const points = generatePoints();
+      const delaunay = Delaunator.from(points, loc => loc.x, loc => loc.y);
 
-    document.getElementById('falloffStrength').addEventListener('input', (e) => {
-      document.getElementById('falloffStrengthValue').textContent = e.target.value;
-    });
+      const map = {
+        points,
+        numRegions: points.length,
+        numTriangles: delaunay.halfedges.length / 3,
+        numEdges: delaunay.halfedges.length,
+        halfedges: delaunay.halfedges,
+        triangles: delaunay.triangles,
+        centers: calculateCentroids(points, delaunay),
+        delaunay: delaunay
+      };
 
-    document.getElementById('shapeComplexity').addEventListener('input', (e) => {
-      document.getElementById('shapeComplexityValue').textContent = e.target.value;
-    });
+      // Build spatial index BEFORE using the map
+      buildSpatialIndex(map);
 
-    document.getElementById('coastlineDetail').addEventListener('input', (e) => {
-      document.getElementById('coastlineDetailValue').textContent = e.target.value;
-    });
+      // Assign properties
+      map.elevation = assignElevation(map);
+      map.moisture = assignMoisture(map);
+      map.temperature = assignTemperature(map);
+      map.regions = generateRegions(map);
 
-    document.getElementById('regionDensity').addEventListener('input', (e) => {
-      document.getElementById('regionDensityValue').textContent = e.target.value;
-    });
+      return map;
+    }
 
-    document.getElementById('beachCoverage').addEventListener('input', (e) => {
-      document.getElementById('beachCoverageValue').textContent = e.target.value;
-    });
+    // UI Controls
+    function generateNewMap() {
+      currentMap = generateMap();
+      drawOverview(document.getElementById('overviewCanvas'), currentMap);
+      drawDetailView(document.getElementById('detailCanvas'), currentMap);
+      calculateStats(currentMap);
+      viewOffset = { x: 0, y: 0 };
+    }
 
-    document.getElementById('minLandmass').addEventListener('input', (e) => {
-      document.getElementById('minLandmassValue').textContent = e.target.value;
-    });
+    function setViewMode(mode) {
+      viewMode = mode;
+      if (currentMap) {
+        drawOverview(document.getElementById('overviewCanvas'), currentMap);
+      }
+    }
 
-    // Generate initial island
-    generateIsland();
+    function updateVoronoiSize() {
+      VORONOI_SIZE = parseInt(document.getElementById('voronoiSize').value);
+      document.getElementById('voronoiSizeValue').textContent = VORONOI_SIZE;
+      generateNewMap();
+    }
+
+    function updateMapScale() {
+      MAP_SCALE = parseInt(document.getElementById('mapScale').value);
+      document.getElementById('mapScaleValue').textContent = MAP_SCALE + 'm';
+      if (currentMap) {
+        drawOverview(document.getElementById('overviewCanvas'), currentMap);
+        drawDetailView(document.getElementById('detailCanvas'), currentMap);
+        calculateStats(currentMap);
+      }
+    }
+
+    function updateRegionCount() {
+      REGION_COUNT = parseInt(document.getElementById('regionCount').value);
+      document.getElementById('regionCountValue').textContent = REGION_COUNT;
+      generateNewMap();
+    }
+
+    function updateZoom() {
+      ZOOM_LEVEL = parseInt(document.getElementById('zoomLevel').value);
+      document.getElementById('zoomValue').textContent = ZOOM_LEVEL + 'x';
+      if (currentMap) {
+        drawDetailView(document.getElementById('detailCanvas'), currentMap);
+      }
+    }
+
+    function updateDetailLevel() {
+      DETAIL_OCTAVES = parseInt(document.getElementById('detailOctaves').value);
+      document.getElementById('detailValue').textContent = DETAIL_OCTAVES;
+      if (currentMap) {
+        drawDetailView(document.getElementById('detailCanvas'), currentMap);
+      }
+    }
+
+    function exportMapData() {
+      if (!currentMap) return;
+
+      // Create a simplified export format
+      const exportData = {
+        metadata: {
+          version: '1.0',
+          scale: MAP_SCALE,
+          voronoiSize: VORONOI_SIZE,
+          regionCount: REGION_COUNT,
+          timestamp: new Date().toISOString()
+        },
+        voronoi: {
+          points: currentMap.points,
+          elevation: currentMap.elevation,
+          moisture: currentMap.moisture,
+          temperature: currentMap.temperature,
+          regions: currentMap.regions
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `island_map_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Initialize
+    setupMouseInteraction();
+    generateNewMap();
   </script>
 </body>
 
