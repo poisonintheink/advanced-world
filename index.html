@@ -649,6 +649,8 @@
     function drawOverview(canvas, map) {
       const ctx = canvas.getContext('2d');
       const scale = canvas.width / VORONOI_SIZE;
+      const xScale = MAP_SCALE / canvas.width;
+      const yScale = MAP_SCALE / canvas.height;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -664,8 +666,8 @@
 
         for (; y < endY; y++) {
           for (let x = 0; x < canvas.width; x++) {
-            const worldX = (x / canvas.width) * MAP_SCALE;
-            const worldY = (y / canvas.height) * MAP_SCALE;
+            const worldX = x * xScale;
+            const worldY = y * yScale;
             const terrain = sampleDetailedTerrain(map, worldX, worldY);
 
             let color;
@@ -746,17 +748,23 @@
       const imageData = ctx.createImageData(canvas.width, canvas.height);
       const data = imageData.data;
 
+      // Precompute scaling factors
+      const xScale = MAP_SCALE / canvas.width;
+      const yScale = MAP_SCALE / canvas.height;
+
       // Center view on map center initially
       const centerX = MAP_SCALE / 2;
       const centerY = MAP_SCALE / 2;
-      const halfWidth = canvas.width / (2 * ZOOM_LEVEL);
-      const halfHeight = canvas.height / (2 * ZOOM_LEVEL);
+      const halfWidth = (canvas.width * xScale) / (2 * ZOOM_LEVEL);
+      const halfHeight = (canvas.height * yScale) / (2 * ZOOM_LEVEL);
+      const offsetX = centerX - halfWidth + viewOffset.x;
+      const offsetY = centerY - halfHeight + viewOffset.y;
 
       for (let y = 0; y < canvas.height; y++) {
+        const worldY = offsetY + y * yScale / ZOOM_LEVEL;
         for (let x = 0; x < canvas.width; x++) {
           // Convert canvas coordinates to world coordinates
-          const worldX = centerX - halfWidth + (x / ZOOM_LEVEL) + viewOffset.x;
-          const worldY = centerY - halfHeight + (y / ZOOM_LEVEL) + viewOffset.y;
+          const worldX = offsetX + x * xScale / ZOOM_LEVEL;
 
           if (worldX < 0 || worldX >= MAP_SCALE || worldY < 0 || worldY >= MAP_SCALE) {
             // Outside map bounds
