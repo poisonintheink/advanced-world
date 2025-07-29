@@ -4,87 +4,273 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tilemap-Ready Landmass Generator</title>
+  <title>Procedural Island Generator</title>
   <style>
     body {
       margin: 0;
       padding: 20px;
-      background: #1a1a1a;
-      color: #fff;
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
     }
 
-    canvas {
-      border: 1px solid #444;
-      display: block;
-      margin: 20px 0;
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #4fbdba;
+      margin-bottom: 30px;
+    }
+
+    .controls {
+      background: #0f3460;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px 20px;
+      align-items: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      justify-content: center;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-size: 14px;
+      color: #7ec8e3;
+    }
+
+    input[type="range"] {
+      width: 150px;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      background: #16213e;
+      border: 1px solid #4fbdba;
+      color: #eee;
+      border-radius: 5px;
     }
 
     button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #4CAF50;
-      color: white;
+      background: #4fbdba;
+      color: #0f3460;
       border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
-      margin-right: 10px;
-      margin-bottom: 10px;
+      transition: all 0.3s ease;
     }
 
     button:hover {
-      background: #45a049;
+      background: #7ec8e3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(79, 189, 186, 0.3);
     }
 
-    .info {
-      font-size: 14px;
-      color: #888;
-      margin-top: 10px;
+    button.active {
+      background: #7ec8e3;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    canvas {
+      border: 3px solid #0f3460;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+      display: block;
+      margin: 0 auto;
+      background: #000;
+    }
+
+    .legend {
+      margin-top: 20px;
+      background: #0f3460;
+      padding: 15px;
+      border-radius: 10px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-box {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      border: 1px solid #333;
     }
   </style>
 </head>
 
 <body>
-  <h1>Tilemap-Ready Landmass Generator</h1>
-  <div class="controls">
-    <button onclick="worldGen.generateWorld('single')">Single Island</button>
-    <button onclick="worldGen.generateWorld('cluster')">Island Cluster</button>
-    <button onclick="worldGen.generateWorld('continent')">Continent</button>
-    <button onclick="worldGen.generateWorld('mixed')">Mixed World</button>
+  <div class="container">
+    <h1>🏝️ Procedural Island Generator</h1>
+
+    <div class="controls">
+      <div class="control-group">
+        <label for="gridSize">Grid Size</label>
+        <input type="number" id="gridSize" value="100" min="50" max="200">
+      </div>
+
+      <div class="control-group">
+        <label for="cellSize">Cell Size</label>
+        <input type="number" id="cellSize" value="6" min="2" max="10">
+      </div>
+
+      <div class="control-group">
+        <label for="noiseScale">Noise Scale</label>
+        <input type="range" id="noiseScale" min="0.5" max="5" step="0.1" value="2">
+        <span id="noiseScaleValue">2</span>
+      </div>
+
+      <div class="control-group">
+        <label for="octaves">Detail Level</label>
+        <input type="range" id="octaves" min="1" max="8" step="1" value="4">
+        <span id="octavesValue">4</span>
+      </div>
+
+      <div class="control-group">
+        <label for="falloffStrength">Island Shape</label>
+        <input type="range" id="falloffStrength" min="0.5" max="3" step="0.1" value="1.5">
+        <span id="falloffStrengthValue">1.5</span>
+      </div>
+
+      <div class="control-group">
+        <label for="shapeComplexity">Shape Complexity</label>
+        <input type="range" id="shapeComplexity" min="1" max="5" step="1" value="3">
+        <span id="shapeComplexityValue">3</span>
+      </div>
+
+      <div class="control-group">
+        <label for="coastlineDetail">Coastline Detail</label>
+        <input type="range" id="coastlineDetail" min="0.05" max="0.3" step="0.05" value="0.15">
+        <span id="coastlineDetailValue">0.15</span>
+      </div>
+
+      <div class="control-group">
+        <label for="regionDensity">Region Density</label>
+        <input type="range" id="regionDensity" min="20" max="100" step="10" value="50">
+        <span id="regionDensityValue">50</span>
+      </div>
+
+      <div class="control-group">
+        <label for="beachCoverage">Beach Coverage</label>
+        <input type="range" id="beachCoverage" min="0.2" max="1" step="0.1" value="0.7">
+        <span id="beachCoverageValue">0.7</span>
+      </div>
+
+      <div class="control-group">
+        <label for="minLandmass">Min Land %</label>
+        <input type="range" id="minLandmass" min="10" max="40" step="5" value="20">
+        <span id="minLandmassValue">20</span>
+      </div>
+
+      <button onclick="generateIsland()">Generate New Island</button>
+    </div>
+
+    <canvas id="islandCanvas"></canvas>
+
+    <div id="statusMessage" style="text-align: center; margin-top: 10px; color: #7ec8e3; min-height: 20px;"></div>
+
+    <div class="view-controls"
+      style="margin-top: 20px; text-align: center; gap: 10px; display: flex; justify-content: center;">
+      <button id="terrainBtn" class="active" onclick="setView('terrain')">Terrain View</button>
+      <button id="regionsBtn" onclick="setView('regions')">Regions View</button>
+      <button id="combinedBtn" onclick="setView('combined')">Combined View</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="color-box" style="background: #001f3f;"></div>
+        <span>Deep Ocean</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #0074D9;"></div>
+        <span>Ocean</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #39CCCC;"></div>
+        <span>Shallow Water</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #F4D03F;"></div>
+        <span>Beach</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #5D6D7E;"></div>
+        <span>Rocky Coast</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #27AE60;"></div>
+        <span>Grassland</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #1E7F3C;"></div>
+        <span>Forest</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #8B7355;"></div>
+        <span>Hills</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #CCCCCC;"></div>
+        <span>Mountains</span>
+      </div>
+    </div>
+
+    <div class="info" style="margin-top: 20px; text-align: center; color: #7ec8e3; font-size: 14px;">
+      <p style="margin: 5px 0;">🏖️ Beach Coverage controls how much coastline has sandy beaches vs rocky cliffs</p>
+      <p style="margin: 5px 0;">🏝️ Min Land % ensures islands are always substantial enough for gameplay</p>
+      <p style="margin: 5px 0;">🗺️ Higher Shape Complexity creates archipelagos and irregular continents</p>
+    </div>
   </div>
-  <canvas id="canvas" width="1024" height="1024"></canvas>
-  <div class="info" id="info"></div>
 
   <script>
-    const WORLD_SIZE = 1024;
-    const CHUNK_SIZE = 64;
-    const TILE_SIZE = 8; // For future tilemap use
-
-    // Simple noise implementation
-    class FastNoise {
-      constructor(seed = Math.random() * 1000) {
+    // Simple Perlin noise implementation
+    class PerlinNoise {
+      constructor(seed = Math.random()) {
         this.seed = seed;
         this.permutation = this.generatePermutation();
       }
 
       generatePermutation() {
-        const perm = new Uint8Array(512);
-        for (let i = 0; i < 256; i++) perm[i] = i;
-
-        // Shuffle
-        for (let i = 255; i > 0; i--) {
-          const j = Math.floor(this.random() * (i + 1));
-          [perm[i], perm[j]] = [perm[j], perm[i]];
+        const p = [];
+        for (let i = 0; i < 256; i++) {
+          p[i] = i;
         }
 
-        // Duplicate
-        for (let i = 0; i < 256; i++) perm[256 + i] = perm[i];
+        // Shuffle using seed
+        let n = this.seed * 256;
+        for (let i = 255; i > 0; i--) {
+          n = (n + 31) * 17 % 256;
+          const j = Math.floor(n);
+          [p[i], p[j]] = [p[j], p[i]];
+        }
 
-        return perm;
-      }
+        // Duplicate for overflow
+        for (let i = 0; i < 256; i++) {
+          p[256 + i] = p[i];
+        }
 
-      random() {
-        this.seed = (this.seed * 9301 + 49297) % 233280;
-        return this.seed / 233280;
+        return p;
       }
 
       fade(t) {
@@ -99,10 +285,10 @@
         const h = hash & 3;
         const u = h < 2 ? x : y;
         const v = h < 2 ? y : x;
-        return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
       }
 
-      noise2D(x, y) {
+      noise(x, y) {
         const X = Math.floor(x) & 255;
         const Y = Math.floor(y) & 255;
 
@@ -112,32 +298,36 @@
         const u = this.fade(x);
         const v = this.fade(y);
 
-        const A = this.permutation[X] + Y;
-        const B = this.permutation[X + 1] + Y;
+        const a = this.permutation[X] + Y;
+        const aa = this.permutation[a];
+        const ab = this.permutation[a + 1];
+        const b = this.permutation[X + 1] + Y;
+        const ba = this.permutation[b];
+        const bb = this.permutation[b + 1];
 
         return this.lerp(
           this.lerp(
-            this.grad(this.permutation[A], x, y),
-            this.grad(this.permutation[B], x - 1, y),
+            this.grad(this.permutation[aa], x, y),
+            this.grad(this.permutation[ba], x - 1, y),
             u
           ),
           this.lerp(
-            this.grad(this.permutation[A + 1], x, y - 1),
-            this.grad(this.permutation[B + 1], x - 1, y - 1),
+            this.grad(this.permutation[ab], x, y - 1),
+            this.grad(this.permutation[bb], x - 1, y - 1),
             u
           ),
           v
         );
       }
 
-      octaveNoise(x, y, octaves = 6, persistence = 0.5, scale = 0.005) {
+      octaveNoise(x, y, octaves, persistence = 0.5) {
         let total = 0;
-        let frequency = scale;
+        let frequency = 1;
         let amplitude = 1;
         let maxValue = 0;
 
         for (let i = 0; i < octaves; i++) {
-          total += this.noise2D(x * frequency, y * frequency) * amplitude;
+          total += this.noise(x * frequency, y * frequency) * amplitude;
           maxValue += amplitude;
           amplitude *= persistence;
           frequency *= 2;
@@ -147,239 +337,589 @@
       }
     }
 
-    // Landmass definition - stores parameters, not pixels
-    class Landmass {
-      constructor(x, y, radius, strength = 1.0, noiseScale = 0.005) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.strength = strength;
-        this.noiseScale = noiseScale;
-      }
+    // Island generation
+    let noise = new PerlinNoise();
+    const canvas = document.getElementById('islandCanvas');
+    const ctx = canvas.getContext('2d');
+    let currentView = 'terrain';
+    let elevationMap = [];
+    let regionMap = [];
+    let gridSizeCache = 0;
 
-      getValueAt(x, y, noise) {
-        const dx = x - this.x;
-        const dy = y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+    // Terrain colors
+    const terrainColors = {
+      deepOcean: '#001f3f',
+      ocean: '#0074D9',
+      shallowWater: '#39CCCC',
+      beach: '#F4D03F',
+      rockyCoast: '#5D6D7E',
+      grass: '#27AE60',
+      forest: '#1E7F3C',
+      hills: '#8B7355',
+      mountain: '#CCCCCC',
+      snow: '#FFFFFF'
+    };
 
-        // Radial falloff
-        const falloff = Math.max(0, 1 - distance / this.radius);
-        if (falloff === 0) return 0;
+    // Region colors - vibrant colors for different territories
+    const regionColors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+      '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8C471', '#82E0AA',
+      '#F7A6A4', '#B19CD9', '#FFB6C1', '#87CEEB', '#DDA0DD',
+      '#F0E68C', '#ADD8E6', '#FA8072', '#E6E6FA', '#FFE4B5'
+    ];
 
-        // Get noise value
-        const noiseValue = noise.octaveNoise(x, y, 6, 0.5, this.noiseScale);
-
-        // Combine falloff with noise
-        return falloff * (0.5 + noiseValue * 0.5) * this.strength;
-      }
+    function getTerrainColor(elevation) {
+      if (elevation < 0.1) return terrainColors.deepOcean;
+      if (elevation < 0.2) return terrainColors.ocean;
+      if (elevation < 0.3) return terrainColors.shallowWater;
+      if (elevation < 0.35) return terrainColors.beach;
+      if (elevation < 0.37) return terrainColors.rockyCoast;
+      if (elevation < 0.5) return terrainColors.grass;
+      if (elevation < 0.65) return terrainColors.forest;
+      if (elevation < 0.8) return terrainColors.hills;
+      if (elevation < 0.9) return terrainColors.mountain;
+      return terrainColors.snow;
     }
 
-    // World generator with chunk-based rendering
-    class WorldGenerator {
-      constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.noise = new FastNoise();
-        this.landmasses = [];
-        this.threshold = 0.4;
-      }
+    function isLand(elevation) {
+      return elevation >= 0.31; // Include all beach areas and rocky coasts in regions
+    }
 
-      generateWorld(type) {
-        this.landmasses = [];
-        this.noise = new FastNoise();
+    function getNeighbors(x, y, gridSize) {
+      const neighbors = [];
+      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]];
 
-        switch (type) {
-          case 'single':
-            this.generateSingleIsland();
-            break;
-          case 'cluster':
-            this.generateCluster();
-            break;
-          case 'continent':
-            this.generateContinent();
-            break;
-          case 'mixed':
-            this.generateMixedWorld();
-            break;
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
+          neighbors.push([nx, ny]);
         }
-
-        this.render();
-        this.updateInfo();
       }
+      return neighbors;
+    }
 
-      generateSingleIsland() {
-        const x = WORLD_SIZE / 2 + (Math.random() - 0.5) * 200;
-        const y = WORLD_SIZE / 2 + (Math.random() - 0.5) * 200;
-        const radius = 250 + Math.random() * 150;
+    function generateRegions(elevationMap, gridSize) {
+      const regionMap = Array(gridSize).fill().map(() => Array(gridSize).fill(-1));
+      const landCells = [];
 
-        this.landmasses.push(new Landmass(x, y, radius));
-      }
-
-      generateCluster() {
-        const clusterX = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
-        const clusterY = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
-        const numIslands = 3 + Math.floor(Math.random() * 3);
-
-        for (let i = 0; i < numIslands; i++) {
-          const angle = (i / numIslands) * Math.PI * 2 + Math.random() * 0.3;
-          const distance = 60 + Math.random() * 80; // Tighter cluster
-
-          const x = clusterX + Math.cos(angle) * distance;
-          const y = clusterY + Math.sin(angle) * distance;
-          const radius = 80 + Math.random() * 60; // Slightly larger islands
-
-          this.landmasses.push(new Landmass(x, y, radius));
+      // Find all land cells
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          if (isLand(elevationMap[y][x])) {
+            landCells.push([x, y]);
+          }
         }
       }
 
-      generateContinent() {
-        const centerX = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
-        const centerY = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
-        const numParts = 3 + Math.floor(Math.random() * 2);
+      if (landCells.length === 0) return regionMap;
 
-        // Create a more connected continent
-        for (let i = 0; i < numParts; i++) {
-          const angle = (i / numParts) * Math.PI * 2 + Math.random() * 0.2;
-          const distance = 20 + Math.random() * 40; // Much closer together
+      // Calculate number of regions based on land mass size
+      const regionDensity = parseInt(document.getElementById('regionDensity').value);
+      const numRegions = Math.max(3, Math.floor(landCells.length / regionDensity));
 
-          const x = centerX + Math.cos(angle) * distance;
-          const y = centerY + Math.sin(angle) * distance;
-          const radius = 220 + Math.random() * 100; // Larger radius
+      // Place random seeds
+      const seeds = [];
+      const usedCells = new Set();
 
-          // Stronger blending for better connectivity
-          this.landmasses.push(new Landmass(x, y, radius, 1.0));
+      for (let i = 0; i < numRegions && i < landCells.length; i++) {
+        let seed;
+        let attempts = 0;
+        do {
+          seed = landCells[Math.floor(Math.random() * landCells.length)];
+          attempts++;
+        } while (usedCells.has(`${seed[0]},${seed[1]}`) && attempts < 100);
+
+        if (attempts < 100) {
+          seeds.push({ x: seed[0], y: seed[1], region: i });
+          regionMap[seed[1]][seed[0]] = i;
+          usedCells.add(`${seed[0]},${seed[1]}`);
         }
-
-        this.threshold = 0.32; // Lower threshold for better connectivity
       }
 
-      generateMixedWorld() {
-        // Main continent - ensure it's one connected mass
-        const continentX = WORLD_SIZE / 2;
-        const continentY = WORLD_SIZE / 2;
+      // Flood fill from seeds
+      const frontier = [...seeds];
 
-        // Add 4-5 heavily overlapping masses for a single continent
-        const numParts = 4 + Math.floor(Math.random() * 2);
-        for (let i = 0; i < numParts; i++) {
-          const angle = (i / numParts) * Math.PI * 2;
-          const distance = 15 + Math.random() * 30; // Very close for guaranteed overlap
+      while (frontier.length > 0) {
+        // Randomly pick a frontier cell
+        const index = Math.floor(Math.random() * frontier.length);
+        const current = frontier.splice(index, 1)[0];
 
-          const x = continentX + Math.cos(angle) * distance;
-          const y = continentY + Math.sin(angle) * distance;
-          const radius = 200 + Math.random() * 80;
+        // Check all neighbors
+        const neighbors = getNeighbors(current.x, current.y, gridSize);
 
-          this.landmasses.push(new Landmass(x, y, radius, 1.0));
+        for (const [nx, ny] of neighbors) {
+          // Only spread to unassigned land cells
+          if (isLand(elevationMap[ny][nx]) && regionMap[ny][nx] === -1) {
+            regionMap[ny][nx] = current.region;
+            frontier.push({ x: nx, y: ny, region: current.region });
+          }
         }
-
-        // Small islands VERY close to the main landmass
-        const numIslands = 2 + Math.floor(Math.random() * 3);
-        for (let i = 0; i < numIslands; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const distance = 180 + Math.random() * 80; // Much closer (was 250-400)
-
-          const x = continentX + Math.cos(angle) * distance;
-          const y = continentY + Math.sin(angle) * distance;
-          const radius = 30 + Math.random() * 40; // Smaller islands
-
-          this.landmasses.push(new Landmass(x, y, radius));
-        }
-
-        this.threshold = 0.35;
       }
 
-      // Efficient chunk-based rendering
-      render() {
-        const imageData = this.ctx.createImageData(WORLD_SIZE, WORLD_SIZE);
-        const data = imageData.data;
+      return regionMap;
+    }
 
-        // Process in chunks for cache efficiency
-        for (let chunkY = 0; chunkY < WORLD_SIZE; chunkY += CHUNK_SIZE) {
-          for (let chunkX = 0; chunkX < WORLD_SIZE; chunkX += CHUNK_SIZE) {
-            this.renderChunk(data, chunkX, chunkY);
+    function generateIsland() {
+      const gridSize = parseInt(document.getElementById('gridSize').value);
+      const cellSize = parseInt(document.getElementById('cellSize').value);
+      const noiseScale = parseFloat(document.getElementById('noiseScale').value);
+      const octaves = parseInt(document.getElementById('octaves').value);
+      const falloffStrength = parseFloat(document.getElementById('falloffStrength').value);
+      const minLandPercent = parseInt(document.getElementById('minLandmass').value) / 100;
+
+      gridSizeCache = gridSize;
+
+      // Update canvas size
+      canvas.width = gridSize * cellSize;
+      canvas.height = gridSize * cellSize;
+
+      // Show generating status
+      document.getElementById('statusMessage').textContent = 'Generating island...';
+
+      let landCellCount = 0;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      // Keep generating until we have enough land
+      do {
+        // Generate new noise seed
+        noise = new PerlinNoise(Math.random());
+
+        // Update status if taking multiple attempts
+        if (attempts > 0) {
+          document.getElementById('statusMessage').textContent =
+            `Generating island... (Attempt ${attempts + 1}/${maxAttempts})`;
+        }
+
+        // Generate elevation map with more complex shapes
+        elevationMap = [];
+        landCellCount = 0;
+
+        // Create multiple blob centers for more varied shapes
+        const shapeComplexity = parseInt(document.getElementById('shapeComplexity').value);
+        const numBlobs = Math.min(shapeComplexity, 1 + Math.floor(Math.random() * shapeComplexity)); // 1 to shapeComplexity blobs
+        const blobs = [];
+        if (shapeComplexity === 1) {
+          // Single blob for simple island
+          blobs.push({
+            x: 0.5,
+            y: 0.5,
+            strength: 1,
+            size: 0.5 * (attempts > 3 ? 1.5 : 1) // Increase size if struggling
+          });
+        } else {
+          // Multiple blobs for complex shapes
+          const baseAngle = Math.random() * Math.PI * 2;
+          for (let i = 0; i < numBlobs; i++) {
+            let angle, distance;
+
+            if (shapeComplexity >= 4 && Math.random() < 0.3) {
+              // Create satellite islands for archipelagos
+              angle = Math.random() * Math.PI * 2;
+              distance = (0.4 + Math.random() * 0.3) * (attempts > 3 ? 0.8 : 1); // Bring closer if struggling
+            } else {
+              // Create connected landmasses
+              angle = baseAngle + (i / numBlobs) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
+              distance = (0.1 + Math.random() * 0.3) * (attempts > 3 ? 0.7 : 1); // Bring closer if struggling
+            }
+
+            blobs.push({
+              x: 0.5 + Math.cos(angle) * distance,
+              y: 0.5 + Math.sin(angle) * distance,
+              strength: 0.5 + Math.random() * 0.5 + (attempts > 3 ? 0.2 : 0), // Boost strength if struggling
+              size: (0.25 + Math.random() * 0.35) * (attempts > 3 ? 1.3 : 1) // Increase size if struggling
+            });
           }
         }
 
-        this.ctx.putImageData(imageData, 0, 0);
+        for (let y = 0; y < gridSize; y++) {
+          elevationMap[y] = [];
+          for (let x = 0; x < gridSize; x++) {
+            // Get noise value with domain warping for more irregular shapes
+            const warpX = x / gridSize;
+            const warpY = y / gridSize;
+
+            // Add warping to create more irregular coastlines
+            const coastlineDetail = parseFloat(document.getElementById('coastlineDetail').value);
+            const warpNoiseX = noise.noise(warpX * 8, warpY * 8) * coastlineDetail;
+            const warpNoiseY = noise.noise(warpX * 8 + 100, warpY * 8 + 100) * coastlineDetail;
+
+            const nx = (warpX + warpNoiseX) * noiseScale;
+            const ny = (warpY + warpNoiseY) * noiseScale;
+            let elevation = noise.octaveNoise(nx, ny, octaves);
+
+            // Normalize to 0-1
+            elevation = (elevation + 1) / 2;
+
+            // Apply multi-blob falloff for varied island shapes
+            let falloff = 0;
+            for (const blob of blobs) {
+              const dx = x / gridSize - blob.x;
+              const dy = y / gridSize - blob.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const blobFalloff = Math.max(0, 1 - Math.pow(dist / blob.size, falloffStrength)) * blob.strength;
+              falloff = Math.max(falloff, blobFalloff);
+            }
+
+            elevation *= falloff;
+
+            // Boost elevation slightly if we're having trouble generating land
+            if (attempts > 3) {
+              elevation = Math.pow(elevation, 0.7); // More aggressive boost
+            } else if (attempts > 1) {
+              elevation = Math.pow(elevation, 0.85);
+            }
+
+            elevationMap[y][x] = Math.max(0, Math.min(1, elevation));
+
+            // Count land cells
+            if (elevationMap[y][x] >= 0.37) {
+              landCellCount++;
+            }
+          }
+        }
+
+        attempts++;
+      } while (landCellCount < gridSize * gridSize * minLandPercent && attempts < maxAttempts);
+
+      // Update status with final land percentage
+      const landPercent = Math.round((landCellCount / (gridSize * gridSize)) * 100);
+      document.getElementById('statusMessage').textContent =
+        `Generated island with ${landPercent}% land coverage` +
+        (attempts > 1 ? ` (${attempts} attempts)` : '');
+
+      // Clear status message after delay
+      setTimeout(() => {
+        document.getElementById('statusMessage').textContent = '';
+      }, 3000);
+
+      // Generate beaches with variable coverage
+      generateBeaches(elevationMap, gridSize);
+
+      // Generate regions
+      regionMap = generateRegions(elevationMap, gridSize);
+
+      // Render the island
+      renderIsland();
+    }
+
+    function generateBeaches(elevationMap, gridSize) {
+      const beachCoverage = parseFloat(document.getElementById('beachCoverage').value);
+      const beachNoise = new PerlinNoise(Math.random());
+      const processedElevation = JSON.parse(JSON.stringify(elevationMap)); // Deep copy
+
+      // First, identify all coastline cells (land cells adjacent to water)
+      const coastlineCells = [];
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          if (elevationMap[y][x] >= 0.37) { // This is land
+            let adjacentToWater = false;
+
+            // Check all 8 neighbors
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dy === 0 && dx === 0) continue;
+                const ny = y + dy;
+                const nx = x + dx;
+                if (ny >= 0 && ny < gridSize && nx >= 0 && nx < gridSize) {
+                  if (elevationMap[ny][nx] < 0.3) { // Adjacent to water
+                    adjacentToWater = true;
+                    break;
+                  }
+                }
+              }
+              if (adjacentToWater) break;
+            }
+
+            if (adjacentToWater) {
+              coastlineCells.push({ x, y });
+            }
+          }
+        }
       }
 
-      renderChunk(data, startX, startY) {
-        const endX = Math.min(startX + CHUNK_SIZE, WORLD_SIZE);
-        const endY = Math.min(startY + CHUNK_SIZE, WORLD_SIZE);
+      // Determine which coastline sections should have beaches using noise
+      const beachSections = new Set();
+      for (const cell of coastlineCells) {
+        // Use larger scale noise for continuous beach sections
+        const beachProbability = (beachNoise.noise(cell.x * 0.02, cell.y * 0.02) + 1) / 2;
+        if (beachProbability < beachCoverage) {
+          beachSections.add(`${cell.x},${cell.y}`);
+        }
+      }
 
-        for (let y = startY; y < endY; y++) {
-          for (let x = startX; x < endX; x++) {
-            const index = (y * WORLD_SIZE + x) * 4;
+      // Expand beach sections to nearby coastline cells for continuity
+      const expandedBeachSections = new Set(beachSections);
+      for (const cell of coastlineCells) {
+        const key = `${cell.x},${cell.y}`;
+        if (!beachSections.has(key)) {
+          // Count nearby beach sections
+          let nearbyBeaches = 0;
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              if (beachSections.has(`${cell.x + dx},${cell.y + dy}`)) {
+                nearbyBeaches++;
+              }
+            }
+          }
+          // Add to beach if surrounded by beach sections
+          if (nearbyBeaches >= 3) {
+            expandedBeachSections.add(key);
+          }
+        }
+      }
 
-            // Calculate combined value from all landmasses
-            let value = 0;
-            for (const landmass of this.landmasses) {
-              // Quick distance check to skip far landmasses
-              const dx = x - landmass.x;
-              const dy = y - landmass.y;
-              const distSq = dx * dx + dy * dy;
+      // Now create the actual beaches
+      // First pass: Mark coastline cells
+      for (const cell of coastlineCells) {
+        const key = `${cell.x},${cell.y}`;
+        if (expandedBeachSections.has(key)) {
+          // This will be a beach - mark it temporarily
+          processedElevation[cell.y][cell.x] = 0.34; // Temporary beach marker
+        } else {
+          // This will be rocky coast
+          processedElevation[cell.y][cell.x] = 0.36;
+        }
+      }
 
-              if (distSq < landmass.radius * landmass.radius * 1.5) {
-                // Use additive blending for better connectivity
-                value += landmass.getValueAt(x, y, this.noise) * 0.7;
+      // Second pass: Create beach buffer in water
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          if (elevationMap[y][x] < 0.3) { // This is water
+            let minDistToBeachCoast = Infinity;
+            let hasBeachCoastNearby = false;
+
+            // Check distance to beach-marked coastline
+            for (let dy = -3; dy <= 3; dy++) {
+              for (let dx = -3; dx <= 3; dx++) {
+                const ny = y + dy;
+                const nx = x + dx;
+                if (ny >= 0 && ny < gridSize && nx >= 0 && nx < gridSize) {
+                  if (processedElevation[ny][nx] === 0.34) { // Beach-marked coast
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < minDistToBeachCoast) {
+                      minDistToBeachCoast = dist;
+                      hasBeachCoastNearby = true;
+                    }
+                  }
+                }
               }
             }
 
-            // Cap at 1.0
-            value = Math.min(1.0, value);
+            // Create beach in water near beach-marked coastline
+            if (hasBeachCoastNearby) {
+              const beachWidthNoise = (beachNoise.noise(x * 0.03 + 100, y * 0.03 + 100) + 1) / 2;
+              const localBeachWidth = 1 + beachWidthNoise * 1.5;
 
-            // Apply threshold
-            const isLand = value > this.threshold;
-
-            if (isLand) {
-              data[index] = 200;     // R
-              data[index + 1] = 180; // G
-              data[index + 2] = 140; // B
-            } else {
-              data[index] = 40;      // R
-              data[index + 1] = 80;  // G
-              data[index + 2] = 120; // B
+              if (minDistToBeachCoast <= localBeachWidth) {
+                processedElevation[y][x] = 0.32; // Beach
+              } else if (minDistToBeachCoast <= localBeachWidth + 1 && elevationMap[y][x] > 0.2) {
+                processedElevation[y][x] = 0.25; // Shallow water
+              }
             }
-            data[index + 3] = 255; // Alpha
           }
         }
       }
 
-      // Get tile data for future use
-      getTileAt(x, y) {
-        let value = 0;
-        for (const landmass of this.landmasses) {
-          value = Math.max(value, landmass.getValueAt(x, y, this.noise));
+      // Third pass: Fix the temporary beach markers on coastline
+      for (const cell of coastlineCells) {
+        if (processedElevation[cell.y][cell.x] === 0.34) {
+          processedElevation[cell.y][cell.x] = 0.32; // Convert to actual beach
         }
-        return value > this.threshold;
       }
 
-      // Export landmass data for tilemap
-      exportLandmassData() {
-        return {
-          landmasses: this.landmasses.map(l => ({
-            x: l.x,
-            y: l.y,
-            radius: l.radius,
-            strength: l.strength
-          })),
-          threshold: this.threshold,
-          worldSize: WORLD_SIZE,
-          tileSize: TILE_SIZE
-        };
+      // Fourth pass: Ensure no gaps between beach and land
+      const finalElevation = JSON.parse(JSON.stringify(processedElevation));
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const current = processedElevation[y][x];
+
+          // If this is shallow water or low elevation
+          if (current >= 0.2 && current < 0.3) {
+            let hasBeachNeighbor = false;
+            let hasLandNeighbor = false;
+
+            // Check neighbors
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dy === 0 && dx === 0) continue;
+                const ny = y + dy;
+                const nx = x + dx;
+                if (ny >= 0 && ny < gridSize && nx >= 0 && nx < gridSize) {
+                  const neighbor = processedElevation[ny][nx];
+                  if (neighbor >= 0.31 && neighbor < 0.35) hasBeachNeighbor = true;
+                  if (neighbor >= 0.37) hasLandNeighbor = true;
+                }
+              }
+            }
+
+            // Fill gap between beach and land
+            if (hasBeachNeighbor && hasLandNeighbor) {
+              finalElevation[y][x] = 0.32;
+            }
+          }
+        }
       }
 
-      updateInfo() {
-        const info = document.getElementById('info');
-        info.textContent = `Landmasses: ${this.landmasses.length} | Threshold: ${this.threshold.toFixed(2)} | Ready for ${Math.floor(WORLD_SIZE / TILE_SIZE)}x${Math.floor(WORLD_SIZE / TILE_SIZE)} tilemap`;
+      // Update the original elevation map
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          elevationMap[y][x] = finalElevation[y][x];
+        }
       }
     }
 
-    // Initialize
-    const canvas = document.getElementById('canvas');
-    const worldGen = new WorldGenerator(canvas);
+    function renderIsland() {
+      const gridSize = gridSizeCache;
+      const cellSize = parseInt(document.getElementById('cellSize').value);
 
-    // Generate initial world
-    worldGen.generateWorld('continent');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Render based on current view
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const elevation = elevationMap[y][x];
+          const region = regionMap[y][x];
+
+          if (currentView === 'terrain') {
+            ctx.fillStyle = getTerrainColor(elevation);
+          } else if (currentView === 'regions') {
+            if (region === -1) {
+              ctx.fillStyle = getTerrainColor(elevation);
+            } else {
+              ctx.fillStyle = regionColors[region % regionColors.length];
+            }
+          } else if (currentView === 'combined') {
+            if (region === -1) {
+              ctx.fillStyle = getTerrainColor(elevation);
+            } else {
+              // Blend terrain and region colors
+              const terrainColor = getTerrainColor(elevation);
+              const regionColor = regionColors[region % regionColors.length];
+              ctx.fillStyle = blendColors(terrainColor, regionColor, 0.6);
+            }
+          }
+
+          ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+        }
+      }
+
+      // Add region borders in regions and combined view
+      if (currentView === 'regions' || currentView === 'combined') {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 2;
+
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            const currentRegion = regionMap[y][x];
+            if (currentRegion === -1) continue;
+
+            // Check right neighbor
+            if (x < gridSize - 1 && regionMap[y][x + 1] !== currentRegion) {
+              ctx.beginPath();
+              ctx.moveTo((x + 1) * cellSize, y * cellSize);
+              ctx.lineTo((x + 1) * cellSize, (y + 1) * cellSize);
+              ctx.stroke();
+            }
+
+            // Check bottom neighbor
+            if (y < gridSize - 1 && regionMap[y + 1][x] !== currentRegion) {
+              ctx.beginPath();
+              ctx.moveTo(x * cellSize, (y + 1) * cellSize);
+              ctx.lineTo((x + 1) * cellSize, (y + 1) * cellSize);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // Add subtle grid lines
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i <= gridSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * cellSize, 0);
+        ctx.lineTo(i * cellSize, canvas.height);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i * cellSize);
+        ctx.lineTo(canvas.width, i * cellSize);
+        ctx.stroke();
+      }
+    }
+
+    function blendColors(color1, color2, ratio) {
+      const c1 = hexToRgb(color1);
+      const c2 = hexToRgb(color2);
+
+      const r = Math.round(c1.r * (1 - ratio) + c2.r * ratio);
+      const g = Math.round(c1.g * (1 - ratio) + c2.g * ratio);
+      const b = Math.round(c1.b * (1 - ratio) + c2.b * ratio);
+
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    function setView(view) {
+      currentView = view;
+
+      // Update button states
+      document.querySelectorAll('.view-controls button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      if (view === 'terrain') document.getElementById('terrainBtn').classList.add('active');
+      else if (view === 'regions') document.getElementById('regionsBtn').classList.add('active');
+      else if (view === 'combined') document.getElementById('combinedBtn').classList.add('active');
+
+      renderIsland();
+    }
+
+    // Update value displays
+    document.getElementById('noiseScale').addEventListener('input', (e) => {
+      document.getElementById('noiseScaleValue').textContent = e.target.value;
+    });
+
+    document.getElementById('octaves').addEventListener('input', (e) => {
+      document.getElementById('octavesValue').textContent = e.target.value;
+    });
+
+    document.getElementById('falloffStrength').addEventListener('input', (e) => {
+      document.getElementById('falloffStrengthValue').textContent = e.target.value;
+    });
+
+    document.getElementById('shapeComplexity').addEventListener('input', (e) => {
+      document.getElementById('shapeComplexityValue').textContent = e.target.value;
+    });
+
+    document.getElementById('coastlineDetail').addEventListener('input', (e) => {
+      document.getElementById('coastlineDetailValue').textContent = e.target.value;
+    });
+
+    document.getElementById('regionDensity').addEventListener('input', (e) => {
+      document.getElementById('regionDensityValue').textContent = e.target.value;
+    });
+
+    document.getElementById('beachCoverage').addEventListener('input', (e) => {
+      document.getElementById('beachCoverageValue').textContent = e.target.value;
+    });
+
+    document.getElementById('minLandmass').addEventListener('input', (e) => {
+      document.getElementById('minLandmassValue').textContent = e.target.value;
+    });
+
+    // Generate initial island
+    generateIsland();
   </script>
 </body>
 
