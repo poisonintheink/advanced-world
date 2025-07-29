@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tilemap-Ready Landmass Generator</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      border: 1px solid #444;
+      display: block;
+      margin: 20px 0;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    .info {
+      font-size: 14px;
+      color: #888;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Tilemap-Ready Landmass Generator</h1>
+  <div class="controls">
+    <button onclick="worldGen.generateWorld('single')">Single Island</button>
+    <button onclick="worldGen.generateWorld('cluster')">Island Cluster</button>
+    <button onclick="worldGen.generateWorld('continent')">Continent</button>
+    <button onclick="worldGen.generateWorld('mixed')">Mixed World</button>
+  </div>
+  <canvas id="canvas" width="1024" height="1024"></canvas>
+  <div class="info" id="info"></div>
+
+  <script>
+    const WORLD_SIZE = 1024;
+    const CHUNK_SIZE = 64;
+    const TILE_SIZE = 8; // For future tilemap use
+
+    // Simple noise implementation
+    class FastNoise {
+      constructor(seed = Math.random() * 1000) {
+        this.seed = seed;
+        this.permutation = this.generatePermutation();
+      }
+
+      generatePermutation() {
+        const perm = new Uint8Array(512);
+        for (let i = 0; i < 256; i++) perm[i] = i;
+
+        // Shuffle
+        for (let i = 255; i > 0; i--) {
+          const j = Math.floor(this.random() * (i + 1));
+          [perm[i], perm[j]] = [perm[j], perm[i]];
+        }
+
+        // Duplicate
+        for (let i = 0; i < 256; i++) perm[256 + i] = perm[i];
+
+        return perm;
+      }
+
+      random() {
+        this.seed = (this.seed * 9301 + 49297) % 233280;
+        return this.seed / 233280;
+      }
+
+      fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+      }
+
+      lerp(a, b, t) {
+        return a + t * (b - a);
+      }
+
+      grad(hash, x, y) {
+        const h = hash & 3;
+        const u = h < 2 ? x : y;
+        const v = h < 2 ? y : x;
+        return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+      }
+
+      noise2D(x, y) {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+
+        const u = this.fade(x);
+        const v = this.fade(y);
+
+        const A = this.permutation[X] + Y;
+        const B = this.permutation[X + 1] + Y;
+
+        return this.lerp(
+          this.lerp(
+            this.grad(this.permutation[A], x, y),
+            this.grad(this.permutation[B], x - 1, y),
+            u
+          ),
+          this.lerp(
+            this.grad(this.permutation[A + 1], x, y - 1),
+            this.grad(this.permutation[B + 1], x - 1, y - 1),
+            u
+          ),
+          v
+        );
+      }
+
+      octaveNoise(x, y, octaves = 6, persistence = 0.5, scale = 0.005) {
+        let total = 0;
+        let frequency = scale;
+        let amplitude = 1;
+        let maxValue = 0;
+
+        for (let i = 0; i < octaves; i++) {
+          total += this.noise2D(x * frequency, y * frequency) * amplitude;
+          maxValue += amplitude;
+          amplitude *= persistence;
+          frequency *= 2;
+        }
+
+        return total / maxValue;
+      }
+    }
+
+    // Landmass definition - stores parameters, not pixels
+    class Landmass {
+      constructor(x, y, radius, strength = 1.0, noiseScale = 0.005) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.strength = strength;
+        this.noiseScale = noiseScale;
+      }
+
+      getValueAt(x, y, noise) {
+        const dx = x - this.x;
+        const dy = y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Radial falloff
+        const falloff = Math.max(0, 1 - distance / this.radius);
+        if (falloff === 0) return 0;
+
+        // Get noise value
+        const noiseValue = noise.octaveNoise(x, y, 6, 0.5, this.noiseScale);
+
+        // Combine falloff with noise
+        return falloff * (0.5 + noiseValue * 0.5) * this.strength;
+      }
+    }
+
+    // World generator with chunk-based rendering
+    class WorldGenerator {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.noise = new FastNoise();
+        this.landmasses = [];
+        this.threshold = 0.4;
+      }
+
+      generateWorld(type) {
+        this.landmasses = [];
+        this.noise = new FastNoise();
+
+        switch (type) {
+          case 'single':
+            this.generateSingleIsland();
+            break;
+          case 'cluster':
+            this.generateCluster();
+            break;
+          case 'continent':
+            this.generateContinent();
+            break;
+          case 'mixed':
+            this.generateMixedWorld();
+            break;
+        }
+
+        this.render();
+        this.updateInfo();
+      }
+
+      generateSingleIsland() {
+        const x = WORLD_SIZE / 2 + (Math.random() - 0.5) * 200;
+        const y = WORLD_SIZE / 2 + (Math.random() - 0.5) * 200;
+        const radius = 250 + Math.random() * 150;
+
+        this.landmasses.push(new Landmass(x, y, radius));
+      }
+
+      generateCluster() {
+        const clusterX = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
+        const clusterY = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
+        const numIslands = 3 + Math.floor(Math.random() * 3);
+
+        for (let i = 0; i < numIslands; i++) {
+          const angle = (i / numIslands) * Math.PI * 2 + Math.random() * 0.3;
+          const distance = 60 + Math.random() * 80; // Tighter cluster
+
+          const x = clusterX + Math.cos(angle) * distance;
+          const y = clusterY + Math.sin(angle) * distance;
+          const radius = 80 + Math.random() * 60; // Slightly larger islands
+
+          this.landmasses.push(new Landmass(x, y, radius));
+        }
+      }
+
+      generateContinent() {
+        const centerX = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
+        const centerY = WORLD_SIZE / 2 + (Math.random() - 0.5) * 100;
+        const numParts = 3 + Math.floor(Math.random() * 2);
+
+        // Create a more connected continent
+        for (let i = 0; i < numParts; i++) {
+          const angle = (i / numParts) * Math.PI * 2 + Math.random() * 0.2;
+          const distance = 20 + Math.random() * 40; // Much closer together
+
+          const x = centerX + Math.cos(angle) * distance;
+          const y = centerY + Math.sin(angle) * distance;
+          const radius = 220 + Math.random() * 100; // Larger radius
+
+          // Stronger blending for better connectivity
+          this.landmasses.push(new Landmass(x, y, radius, 1.0));
+        }
+
+        this.threshold = 0.32; // Lower threshold for better connectivity
+      }
+
+      generateMixedWorld() {
+        // Main continent - ensure it's one connected mass
+        const continentX = WORLD_SIZE / 2;
+        const continentY = WORLD_SIZE / 2;
+
+        // Add 4-5 heavily overlapping masses for a single continent
+        const numParts = 4 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < numParts; i++) {
+          const angle = (i / numParts) * Math.PI * 2;
+          const distance = 15 + Math.random() * 30; // Very close for guaranteed overlap
+
+          const x = continentX + Math.cos(angle) * distance;
+          const y = continentY + Math.sin(angle) * distance;
+          const radius = 200 + Math.random() * 80;
+
+          this.landmasses.push(new Landmass(x, y, radius, 1.0));
+        }
+
+        // Small islands VERY close to the main landmass
+        const numIslands = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < numIslands; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const distance = 180 + Math.random() * 80; // Much closer (was 250-400)
+
+          const x = continentX + Math.cos(angle) * distance;
+          const y = continentY + Math.sin(angle) * distance;
+          const radius = 30 + Math.random() * 40; // Smaller islands
+
+          this.landmasses.push(new Landmass(x, y, radius));
+        }
+
+        this.threshold = 0.35;
+      }
+
+      // Efficient chunk-based rendering
+      render() {
+        const imageData = this.ctx.createImageData(WORLD_SIZE, WORLD_SIZE);
+        const data = imageData.data;
+
+        // Process in chunks for cache efficiency
+        for (let chunkY = 0; chunkY < WORLD_SIZE; chunkY += CHUNK_SIZE) {
+          for (let chunkX = 0; chunkX < WORLD_SIZE; chunkX += CHUNK_SIZE) {
+            this.renderChunk(data, chunkX, chunkY);
+          }
+        }
+
+        this.ctx.putImageData(imageData, 0, 0);
+      }
+
+      renderChunk(data, startX, startY) {
+        const endX = Math.min(startX + CHUNK_SIZE, WORLD_SIZE);
+        const endY = Math.min(startY + CHUNK_SIZE, WORLD_SIZE);
+
+        for (let y = startY; y < endY; y++) {
+          for (let x = startX; x < endX; x++) {
+            const index = (y * WORLD_SIZE + x) * 4;
+
+            // Calculate combined value from all landmasses
+            let value = 0;
+            for (const landmass of this.landmasses) {
+              // Quick distance check to skip far landmasses
+              const dx = x - landmass.x;
+              const dy = y - landmass.y;
+              const distSq = dx * dx + dy * dy;
+
+              if (distSq < landmass.radius * landmass.radius * 1.5) {
+                // Use additive blending for better connectivity
+                value += landmass.getValueAt(x, y, this.noise) * 0.7;
+              }
+            }
+
+            // Cap at 1.0
+            value = Math.min(1.0, value);
+
+            // Apply threshold
+            const isLand = value > this.threshold;
+
+            if (isLand) {
+              data[index] = 200;     // R
+              data[index + 1] = 180; // G
+              data[index + 2] = 140; // B
+            } else {
+              data[index] = 40;      // R
+              data[index + 1] = 80;  // G
+              data[index + 2] = 120; // B
+            }
+            data[index + 3] = 255; // Alpha
+          }
+        }
+      }
+
+      // Get tile data for future use
+      getTileAt(x, y) {
+        let value = 0;
+        for (const landmass of this.landmasses) {
+          value = Math.max(value, landmass.getValueAt(x, y, this.noise));
+        }
+        return value > this.threshold;
+      }
+
+      // Export landmass data for tilemap
+      exportLandmassData() {
+        return {
+          landmasses: this.landmasses.map(l => ({
+            x: l.x,
+            y: l.y,
+            radius: l.radius,
+            strength: l.strength
+          })),
+          threshold: this.threshold,
+          worldSize: WORLD_SIZE,
+          tileSize: TILE_SIZE
+        };
+      }
+
+      updateInfo() {
+        const info = document.getElementById('info');
+        info.textContent = `Landmasses: ${this.landmasses.length} | Threshold: ${this.threshold.toFixed(2)} | Ready for ${Math.floor(WORLD_SIZE / TILE_SIZE)}x${Math.floor(WORLD_SIZE / TILE_SIZE)} tilemap`;
+      }
+    }
+
+    // Initialize
+    const canvas = document.getElementById('canvas');
+    const worldGen = new WorldGenerator(canvas);
+
+    // Generate initial world
+    worldGen.generateWorld('continent');
+  </script>
+</body>
+
+</html>
