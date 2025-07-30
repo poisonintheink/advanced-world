@@ -1,8 +1,8 @@
-importScripts('https://unpkg.com/simplex-noise@2.4.0/simplex-noise.js');
+importScripts('simplex.js');
 
 let mapData = null;
 let WORLD_TO_VORONOI = 1;
-const detailNoise = new SimplexNoise(4);
+let detailNoise = null;
 
 function sampleNoise(noise, x, y, octaves, persistence = 0.5, scale = 1) {
   let value = 0;
@@ -181,6 +181,7 @@ onmessage = function (e) {
   if (data.type === 'init') {
     mapData = data.mapData;
     WORLD_TO_VORONOI = mapData.voronoiSize / mapData.mapScale;
+    detailNoise = new SimplexNoise((data.seed || 0) + 3);
   } else if (data.type === 'generateChunk') {
     generateChunk(data);
   }

@@ -139,6 +139,10 @@
         <label>Region Count:</label>
         <input type="range" id="regionCount" min="3" max="20" value="7" onchange="updateRegionCount()">
         <span class="value-display" id="regionCountValue">7</span>
+        <br>
+        <label>Seed:</label>
+        <input type="number" id="seedInput" style="width:120px">
+        <button onclick="randomizeSeed()">Randomize</button>
       </div>
 
       <div class="control-group">
@@ -201,7 +205,7 @@
     <div>Region: <span id="regionInfo">-</span></div>
   </div>
 
-  <script src="https://unpkg.com/simplex-noise@2.4.0/simplex-noise.js"></script>
+  <script src="simplex.js"></script>
   <script src="https://unpkg.com/delaunator@4.0.1/delaunator.min.js"></script>
   <script>
     // Configuration
@@ -210,6 +214,7 @@
     let REGION_COUNT = 7;
     let ZOOM_LEVEL = 4;
     let DETAIL_OCTAVES = 3;
+    let SEED = Math.floor(Math.random() * 1000000);
     let WORLD_TO_VORONOI = VORONOI_SIZE / MAP_SCALE;
 
     // State
@@ -219,17 +224,23 @@
     let isDragging = false;
     let lastMousePos = { x: 0, y: 0 };
     let politicalColors = [];
-    let regionMap = null;
     let terrainWorker = null;
     let overviewChunkCache = {};
     let detailChunkCache = {};
     let nextChunkId = 0;
 
     // Noise generators
-    const elevationNoise = new SimplexNoise(1);
-    const moistureNoise = new SimplexNoise(2);
-    const temperatureNoise = new SimplexNoise(3);
-    const detailNoise = new SimplexNoise(4);
+    let elevationNoise;
+    let moistureNoise;
+    let temperatureNoise;
+    let detailNoise;
+
+    function initNoise() {
+      elevationNoise = new SimplexNoise(SEED);
+      moistureNoise = new SimplexNoise(SEED + 1);
+      temperatureNoise = new SimplexNoise(SEED + 2);
+      detailNoise = new SimplexNoise(SEED + 3);
+    }
 
     function recomputeScales() {
       WORLD_TO_VORONOI = VORONOI_SIZE / MAP_SCALE;
@@ -268,6 +279,7 @@
       terrainWorker.onmessage = handleWorkerMessage;
       terrainWorker.postMessage({
         type: 'init',
+        seed: SEED,
         mapData: {
           mapScale: MAP_SCALE,
           voronoiSize: VORONOI_SIZE,
@@ -919,6 +931,12 @@
 
     // UI Controls
     function generateNewMap() {
+      const seedField = document.getElementById('seedInput');
+      const parsed = parseInt(seedField.value);
+      SEED = isNaN(parsed) ? Math.floor(Math.random() * 1000000) : parsed;
+      seedField.value = SEED;
+
+      initNoise();
       recomputeScales();
       precomputePoliticalColors();
       currentMap = generateMap();
@@ -963,6 +981,10 @@
       document.getElementById('regionCountValue').textContent = REGION_COUNT;
       precomputePoliticalColors();
       generateNewMap();
+    }
+
+    function randomizeSeed() {
+      document.getElementById('seedInput').value = Math.floor(Math.random() * 1000000);
     }
 
     function updateZoom() {
@@ -1016,6 +1038,8 @@
 
     // Initialize
     setupMouseInteraction();
+    document.getElementById('seedInput').value = SEED;
+    initNoise();
     generateNewMap();
   </script>
 </body>
