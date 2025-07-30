@@ -763,7 +763,7 @@
         for (let x = 0; x < canvas.width; x += chunkSize) {
           const w = Math.min(chunkSize, canvas.width - x);
           const h = Math.min(chunkSize, canvas.height - y);
-          const key = `chunk_${x}_${y}_${Math.round(offsetX)}_${Math.round(offsetY)}_${ZOOM_LEVEL}`;
+          const key = `chunk_${x}_${y}_${Math.round(offsetX)}_${Math.round(offsetY)}_${ZOOM_LEVEL}_${viewMode}`;
 
           if (detailChunkCache[key]) {
             ctx.putImageData(detailChunkCache[key], x, y);
